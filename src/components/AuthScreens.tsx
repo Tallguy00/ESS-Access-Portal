@@ -248,17 +248,20 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
     try {
       setErrorMsg('');
       setSuccessMsg('');
+      setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + '/auth/callback'
         }
       });
+      setLoading(false);
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
       }
     } catch (err: any) {
+      setLoading(false);
       setErrorMsg(err.message || 'Google Authentication gateway failure.');
       setShowGoogleModal(true);
     }
@@ -268,17 +271,20 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
     try {
       setErrorMsg('');
       setSuccessMsg('');
+      setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + '/auth/callback'
         }
       });
+      setLoading(false);
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
       }
     } catch (err: any) {
+      setLoading(false);
       setErrorMsg(err.message || 'Apple Authentication gateway failure.');
       setShowGoogleModal(true);
     }
@@ -637,34 +643,44 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
   const handleGoogleSignIn = async () => {
     try {
       setErrorMsg('');
+      setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + '/auth/callback'
         }
       });
+      setLoading(false);
       if (error) {
         setErrorMsg(error.message);
+        setShowGoogleModal(true);
       }
     } catch (err: any) {
+      setLoading(false);
       setErrorMsg(err.message || 'Google Authentication gateway failure.');
+      setShowGoogleModal(true);
     }
   };
 
   const handleAppleSignIn = async () => {
     try {
       setErrorMsg('');
+      setLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + '/auth/callback'
         }
       });
+      setLoading(false);
       if (error) {
         setErrorMsg(error.message);
+        setShowGoogleModal(true);
       }
     } catch (err: any) {
+      setLoading(false);
       setErrorMsg(err.message || 'Apple Authentication gateway failure.');
+      setShowGoogleModal(true);
     }
   };
 
@@ -987,13 +1003,13 @@ export function ForgotPasswordScreen({ onNavigate }: { onNavigate: (page: 'landi
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">Corporate Email Address</label>
             <div className="relative">
-              <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+              <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder="name@ess.gov.et"
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-sm text-gray-955 dark:text-white"
               />
             </div>
@@ -1129,15 +1145,15 @@ interface GoogleAuthHelperModalProps {
   onSimulateSuccess?: (email: string) => void;
 }
 
-export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModalProps) {
+export function GoogleAuthHelperModal({ isOpen, onClose, onSimulateSuccess }: GoogleAuthHelperModalProps) {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-850 overflow-hidden flex flex-col max-h-[90vh] text-gray-900 dark:text-white font-sans">
+      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-850 overflow-hidden flex flex-col max-h-[95vh] text-gray-900 dark:text-white font-sans">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-gray-150 dark:border-gray-800 flex items-start justify-between bg-gray-50/70 dark:bg-gray-900/40">
+        <div className="p-5 border-b border-gray-150 dark:border-gray-800 flex items-start justify-between bg-gray-50/70 dark:bg-gray-900/40 shrink-0">
           <div className="space-y-1">
             <h3 className="text-base font-bold text-gray-950 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
@@ -1158,23 +1174,157 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-4 text-xs leading-relaxed max-h-[60vh]">
+        <div className="p-6 overflow-y-auto space-y-5 text-xs leading-relaxed flex-1">
           <div className="space-y-4">
             <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-xl text-amber-800 dark:text-amber-300 space-y-1">
               <div className="font-semibold flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Why this happen?</span>
+                <span>Why this happens (HTTP 404 or Gateway Disabled)</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Your Supabase project <strong>kbqlhumzcfenjumhaznf</strong> currently has Google OAuth <strong>disabled</strong>. The Supabase auth gateway rejects the redirect request because it hasn't been configured with your Google Cloud Developer Client credentials yet.
+                If you receive an <strong>HTTP 404</strong>, it is because your Supabase project <strong>kbqlhumzcfenjumhaznf</strong> has Google OAuth <strong>disabled</strong>. The Supabase auth gateway rejects or 404s the redirect request until it has been configured with your Google Cloud Developer Client credentials.
               </p>
             </div>
 
-            <div className="space-y-2.5">
-              <span className="font-bold text-gray-950 dark:text-white block text-xs tracking-tight uppercase">How to enable it (1-Minute Fix):</span>
+            {/* Simulated Success Section */}
+            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-150 dark:border-indigo-900/30 rounded-2xl space-y-3">
+              <div>
+                <span className="font-bold text-indigo-950 dark:text-indigo-300 block text-xs tracking-tight uppercase flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Option A: Instant Testing Simulation (Highly Recommended)</span>
+                </span>
+                <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-0.5">
+                  Select an account role below to instantly simulate a successful federated auth login without needing any setup or encountering a 404 page:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('super@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-indigo-600 dark:text-indigo-400">Super Admin</div>
+                  <div className="text-[10px] text-gray-450 truncate">super@ess.gov.et</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('admin@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-sky-600 dark:text-sky-400">IT Admin</div>
+                  <div className="text-[10px] text-gray-450 truncate">admin@ess.gov.et</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('manager.finance@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-emerald-600 dark:text-emerald-400">Finance Manager</div>
+                  <div className="text-[10px] text-gray-450 truncate">manager.finance@ess.gov.et</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('manager.ict@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-teal-600 dark:text-teal-400">ICT Coordinator</div>
+                  <div className="text-[10px] text-gray-450 truncate">manager.ict@ess.gov.et</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('manager.hr@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-purple-600 dark:text-purple-400">HR Manager</div>
+                  <div className="text-[10px] text-gray-450 truncate">manager.hr@ess.gov.et</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSimulateSuccess) {
+                      onSimulateSuccess('employee@ess.gov.et');
+                      onClose();
+                    }
+                  }}
+                  className="p-2.5 bg-white hover:bg-gray-50 dark:bg-gray-900/60 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl font-medium text-[11px] text-gray-800 dark:text-gray-200 text-left transition-colors cursor-pointer shadow-sm"
+                >
+                  <div className="font-bold text-gray-600 dark:text-gray-400">Regular Employee</div>
+                  <div className="text-[10px] text-gray-450 truncate">employee@ess.gov.et</div>
+                </button>
+              </div>
+
+              {/* Custom Simulation Email */}
+              <div className="pt-1.5 border-t border-indigo-100 dark:border-indigo-900/30">
+                <div className="text-[10px] font-bold text-indigo-950 dark:text-indigo-400 mb-1">Or use any custom email address:</div>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const customEmail = formData.get('custom_sim_email') as string;
+                    if (customEmail && customEmail.includes('@') && onSimulateSuccess) {
+                      onSimulateSuccess(customEmail.trim());
+                      onClose();
+                    } else {
+                      alert('Please enter a valid email address.');
+                    }
+                  }}
+                  className="flex gap-2"
+                >
+                  <input 
+                    name="custom_sim_email"
+                    type="email" 
+                    placeholder="name@ess.gov.et"
+                    defaultValue="user.statistics@ess.gov.et"
+                    className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg text-[11px]"
+                    required
+                  />
+                  <button 
+                    type="submit"
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
+                  >
+                    Simulate Success
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Live Setup Section */}
+            <div className="space-y-2.5 border-t border-gray-150 dark:border-gray-800 pt-4">
+              <span className="font-bold text-gray-950 dark:text-white block text-xs tracking-tight uppercase">Option B: Real 1-Minute Live Setup (To prevent 404)</span>
               <ol className="space-y-3 pl-1 text-[11px]">
                 <li className="flex gap-2">
-                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">1</span>
+                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">1</span>
                   <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Go to Supabase Admin Console:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1185,7 +1335,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                   </div>
                 </li>
                 <li className="flex gap-2">
-                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">2</span>
+                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">2</span>
                   <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Enable Google Provider:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1194,7 +1344,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                   </div>
                 </li>
                 <li className="flex gap-2">
-                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">3</span>
+                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">3</span>
                   <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Enter Google Client Keys:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1203,7 +1353,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                   </div>
                 </li>
                 <li className="flex gap-2">
-                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">4</span>
+                  <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">4</span>
                   <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Configure Redirect URI:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1230,8 +1380,8 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
             </div>
 
             <div className="border-t border-gray-150 dark:border-gray-800 pt-3.5 space-y-2">
-              <span className="font-semibold text-gray-950 dark:text-gray-200 block text-[11px]">Ready to test?</span>
-              <p className="text-gray-500 dark:text-gray-400 text-[11px]">If you've enabled the Google provider in your Supabase admin console, you can fire the live connection now:</p>
+              <span className="font-semibold text-gray-950 dark:text-gray-200 block text-[11px]">Ready to fire real OAuth?</span>
+              <p className="text-gray-500 dark:text-gray-400 text-[11px]">If you've enabled the Google provider in your Supabase admin console, you can run the live connection now:</p>
               <button
                 type="button"
                 onClick={async () => {
@@ -1246,7 +1396,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                     alert('Attempt failed: ' + (e?.message || 'Check your Supabase configurations.'));
                   }
                 }}
-                className="w-full py-2 bg-gray-900 dark:bg-gray-800 hover:bg-gray-800 dark:hover:bg-gray-700 text-white font-bold rounded-xl transition-all cursor-pointer text-center"
+                className="w-full py-2 bg-gray-950 dark:bg-gray-800 hover:bg-gray-800 dark:hover:bg-gray-750 text-white font-bold rounded-xl transition-all cursor-pointer text-center text-[11px]"
               >
                 🚀 Connect with Live Google OAuth
               </button>
@@ -1255,10 +1405,10 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
         </div>
 
         {/* Modal Actions */}
-        <div className="p-5 border-t border-gray-150 dark:border-gray-800 flex items-center justify-end gap-2 bg-gray-50/70 dark:bg-gray-900/40">
+        <div className="p-5 border-t border-gray-150 dark:border-gray-800 flex items-center justify-end gap-2 bg-gray-50/70 dark:bg-gray-900/40 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-200 dark:border-gray-750 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl font-bold transition-all text-gray-700 dark:text-gray-300 cursor-pointer bg-transparent"
+            className="px-4 py-2 border border-gray-200 dark:border-gray-750 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl font-bold transition-all text-gray-700 dark:text-gray-300 cursor-pointer bg-transparent text-[11px]"
           >
             Close
           </button>
