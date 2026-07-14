@@ -2,6 +2,19 @@
 // sending all operations securely to the Express backend (/api/...)
 // to achieve a robust full-stack architecture.
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (typeof window !== "undefined") {
+  if (!supabaseUrl) {
+    console.warn("⚠️ VITE_SUPABASE_URL environment variable is missing in the frontend config.");
+  }
+  if (!supabaseAnonKey) {
+    console.warn("⚠️ VITE_SUPABASE_ANON_KEY environment variable is missing in the frontend config.");
+  }
+}
+
+
 async function apiCall(endpoint, data) {
   try {
     const response = await fetch(endpoint, {
@@ -52,7 +65,7 @@ function notifyAuthListeners(event, session) {
 if (typeof window !== "undefined") {
   window.addEventListener("message", (event) => {
     const origin = event.origin;
-    if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    if (origin !== window.location.origin && !origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
       return;
     }
     if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.session) {
@@ -306,10 +319,10 @@ export const supabase = {
         },
 
         getPublicUrl(filePath) {
-          const supabaseUrl = "https://kbqlhumzcfenjumhaznf.supabase.co";
+          const url = import.meta.env.VITE_SUPABASE_URL || "https://kbqlhumzcfenjumhaznf.supabase.co";
           return {
             data: {
-              publicUrl: `${supabaseUrl}/storage/v1/object/public/${this.bucketName}/${filePath}`,
+              publicUrl: `${url}/storage/v1/object/public/${this.bucketName}/${filePath}`,
             },
           };
         },
