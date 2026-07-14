@@ -785,7 +785,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
-                <span className="absolute right-3 top-3.5 text-gray-400">
+                <span className="absolute left-3 top-3.5 text-gray-400">
                   <Phone className="w-4 h-4" />
                 </span>
                 <input
@@ -793,7 +793,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+251 (911) 000-000"
+                  placeholder="+1 (555) 019-2834"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-955 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -802,7 +802,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
-                <span className="absolute right-3 top-3.5 text-gray-400">
+                <span className="absolute left-3 top-3.5 text-gray-400">
                   <Briefcase className="w-4 h-4" />
                 </span>
                 <input
@@ -1166,7 +1166,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                 <span>Why this happen?</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Your Supabase project <strong>kcgibypwlbshqkprgptf</strong> currently has Google OAuth <strong>disabled</strong>. The Supabase auth gateway rejects the redirect request because it hasn't been configured with your Google Cloud Developer Client credentials yet.
+                Your Supabase project <strong>kbqlhumzcfenjumhaznf</strong> currently has Google OAuth <strong>disabled</strong>. The Supabase auth gateway rejects the redirect request because it hasn't been configured with your Google Cloud Developer Client credentials yet.
               </p>
             </div>
 
@@ -1175,10 +1175,10 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
               <ol className="space-y-3 pl-1 text-[11px]">
                 <li className="flex gap-2">
                   <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">1</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Go to Supabase Admin Console:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
-                      Open <a href="https://supabase.com/dashboard/project/kcgibypwlbshqkprgptf/auth/providers" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-0.5">
+                      Open <a href="https://supabase.com/dashboard/project/kbqlhumzcfenjumhaznf/auth/providers" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-0.5">
                         Authentication &gt; Providers settings
                       </a> inside your dashboard.
                     </p>
@@ -1186,7 +1186,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                 </li>
                 <li className="flex gap-2">
                   <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">2</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Enable Google Provider:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
                       Expand the <strong>Google</strong> row inside the auth providers catalog, and toggle <strong>"Enable Google provider"</strong> to ON.
@@ -1195,7 +1195,7 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                 </li>
                 <li className="flex gap-2">
                   <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">3</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Enter Google Client Keys:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
                       Paste the <strong>Client ID</strong> and <strong>Client Secret</strong> generated from your Google Cloud Console (under APIs &amp; Services &gt; Credentials).
@@ -1204,11 +1204,26 @@ export function GoogleAuthHelperModal({ isOpen, onClose }: GoogleAuthHelperModal
                 </li>
                 <li className="flex gap-2">
                   <span className="w-5 h-5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold rounded-full flex items-center justify-center shrink-0">4</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <strong className="text-gray-900 dark:text-gray-100">Configure Redirect URI:</strong>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
-                      Copy the <strong>Redirect URI</strong> displayed in Supabase, and paste it under "Authorized redirect URIs" in your Google Developer console, then hit <strong>Save</strong>!
+                      Paste the following Supabase Redirect URI under <strong>"Authorized redirect URIs"</strong> in your Google Developer Console, then hit <strong>Save</strong>:
                     </p>
+                    <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-750 rounded-lg font-mono text-[10px] flex items-center justify-between gap-2.5">
+                      <span className="break-all select-all text-gray-800 dark:text-gray-200 flex-1 min-w-0 pr-1">
+                        https://kbqlhumzcfenjumhaznf.supabase.co/auth/v1/callback
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText("https://kbqlhumzcfenjumhaznf.supabase.co/auth/v1/callback");
+                        }}
+                        className="px-2 py-1 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shrink-0 cursor-pointer transition-colors"
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
                 </li>
               </ol>

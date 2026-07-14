@@ -1,0 +1,293 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@variant dark (.dark &);
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background-color: #020617 !important;
+  color: #F8FAFC !important;
+}
+
+/* Custom scrollbars for details panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1F2937;
+}
+
+/* Custom classes of the Clean Minimalism Design */
+.btn-primary-minimal {
+  background-color: #2563EB;
+  color: #FFFFFF;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-minimal:hover {
+  background-color: #1D4ED8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.15);
+}
+
+.dark .btn-primary-minimal {
+  background-color: #3B82F6;
+}
+
+.dark .btn-primary-minimal:hover {
+  background-color: #2563EB;
+  box-shadow: 0 2px 4.5px rgba(59, 130, 246, 0.25);
+}
+
+.btn-secondary-minimal {
+  background-color: #FFFFFF;
+  color: #374151;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  border: 1px solid #D1D5DB;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-minimal:hover {
+  background-color: #F9FAFB;
+  border-color: #9CA3AF;
+}
+
+.dark .btn-secondary-minimal {
+  background-color: #111827;
+  color: #E5E7EB;
+  border-color: #374151;
+}
+
+.dark .btn-secondary-minimal:hover {
+  background-color: #1F2937;
+  border-color: #4B5563;
+}
+
+/* Minimalist Form Controls Overrides */
+input, select, textarea {
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  color: #111827 !important;
+  border: 1px solid #D1D5DB !important;
+  border-radius: 6px !important;
+  background-color: #FFFFFF !important;
+  padding: 8px 12px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.dark input, .dark select, .dark textarea {
+  color: #F9FAFB !important;
+  border-color: #374151 !important;
+  background-color: #111827 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
+}
+
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Clean status pills */
+.badge-pending {
+  background-color: #FEF3C7 !important;
+  color: #92400E !important;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dark .badge-pending {
+  background-color: #78350F !important;
+  color: #FCD34D !important;
+}
+
+.badge-approved {
+  background-color: #DCFCE7 !important;
+  color: #166534 !important;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dark .badge-approved {
+  background-color: #064E3B !important;
+  color: #A7F3D0 !important;
+}
+
+.badge-review {
+  background-color: #DBEAFE !important;
+  color: #1E40AF !important;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dark .badge-review {
+  background-color: #1E3A8A !important;
+  color: #BFDBFE !important;
+}
+
+.badge-rejected {
+  background-color: #FEE2E2 !important;
+  color: #991B1B !important;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dark .badge-rejected {
+  background-color: #7F1D1D !important;
+  color: #FCA5A5 !important;
+}
+
+/* Subtly animated dialog overlays */
+@keyframes backdrop-fade {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes modal-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-backdrop-fade {
+  animation: backdrop-fade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-modal-slide {
+  animation: modal-slide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Standardized Table Styles */
+.table-standard {
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+
+.table-header-row {
+  background-color: rgba(249, 250, 251, 0.5) !important;
+}
+
+.dark .table-header-row {
+  background-color: rgba(17, 24, 39, 0.5) !important;
+}
+
+.th-standard {
+  padding: 12px 16px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #9CA3AF !important; /* text-gray-400 */
+}
+
+.dark .th-standard {
+  color: #D1D5DB !important; /* text-gray-300 */
+}
+
+/* Global text color adaptation in dark mode for maximum legibility */
+.dark .text-slate-950, .dark .text-gray-950 {
+  color: #F9FAFB !important;
+}
+.dark .text-slate-900, .dark .text-gray-900 {
+  color: #F3F4F6 !important;
+}
+.dark .text-slate-800, .dark .text-gray-800 {
+  color: #E5E7EB !important;
+}
+.dark .text-slate-700, .dark .text-gray-700 {
+  color: #D1D5DB !important;
+}
+.dark .text-slate-600, .dark .text-gray-600 {
+  color: #9CA3AF !important;
+}
+.dark .text-slate-500, .dark .text-gray-500 {
+  color: #9CA3AF !important;
+}
+
+.td-standard {
+  padding: 14px 16px !important;
+  font-size: 13px !important;
+}
+
+
