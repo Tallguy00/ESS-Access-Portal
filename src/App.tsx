@@ -317,11 +317,11 @@ export default function App() {
           const params = new URLSearchParams(hash.replace(/^#/, ''));
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
-          if (accessToken && refreshToken) {
+          if (accessToken) {
             console.log("OAuth callback detected. Creating session...");
             await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: refreshToken
+              refresh_token: refreshToken || undefined
             });
             // Clean up the URL hash so the user doesn't see raw tokens
             try {
