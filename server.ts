@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import app from "./app";
+import app from "./api/app.ts";
 
 // Load environment variables for local development
 dotenv.config();
