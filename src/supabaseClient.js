@@ -107,7 +107,45 @@ export const supabase = {
         activeSession = null;
         localStorage.removeItem("ar_active_session");
       }
+
+      // If activeSession exists but lacks user details, fetch and populate them
+      if (activeSession && !activeSession.user) {
+        console.log("activeSession lacks user details. Fetching user profile...");
+        const userRes = await this.getUser();
+        if (!userRes.error && userRes.data?.user) {
+          activeSession.user = userRes.data.user;
+          localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
+        }
+      }
+
       return { data: { session: activeSession }, error: res.error || null };
+    },
+
+    async setSession({ access_token, refresh_token }) {
+      if (!access_token) {
+        return { data: { session: null, user: null }, error: { message: "Access token is required" } };
+      }
+      activeSession = {
+        access_token,
+        refresh_token: refresh_token || null,
+        token_type: "bearer",
+        user: null
+      };
+      localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
+
+      const userRes = await this.getUser();
+      if (userRes.error) {
+        activeSession = null;
+        localStorage.removeItem("ar_active_session");
+        notifyAuthListeners("SIGNED_OUT", null);
+        return { data: { session: null, user: null }, error: userRes.error };
+      }
+
+      activeSession.user = userRes.data.user;
+      localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
+
+      notifyAuthListeners("SIGNED_IN", activeSession);
+      return { data: { session: activeSession, user: userRes.data.user }, error: null };
     },
 
     async getUser() {

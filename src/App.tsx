@@ -311,6 +311,27 @@ export default function App() {
   useEffect(() => {
     const recoverSession = async () => {
       try {
+        // Detect OAuth callback responses from Supabase
+        const hash = window.location.hash;
+        if (hash && (hash.includes("access_token=") || hash.includes("refresh_token="))) {
+          const params = new URLSearchParams(hash.replace(/^#/, ''));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            console.log("OAuth callback detected. Creating session...");
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            // Clean up the URL hash so the user doesn't see raw tokens
+            try {
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            } catch (historyErr) {
+              console.warn("Could not clean up URL hash:", historyErr);
+            }
+          }
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         const loginKey = session?.user?.email;
         if (loginKey) {
