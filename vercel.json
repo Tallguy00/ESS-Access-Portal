@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs22.x"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -12,13 +17,6 @@
     {
       "source": "/:path*",
       "destination": "/index.html"
-    },
-    {
-      "functions": {
-        "api/index.ts": {
-          "runtime": "nodejs22.x"
-        }
-      }
     }
   ]
 }
