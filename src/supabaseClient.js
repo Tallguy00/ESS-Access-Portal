@@ -15,9 +15,12 @@ if (typeof window !== "undefined") {
 }
 
 
+const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+
 async function apiCall(endpoint, data) {
   try {
-    const response = await fetch(endpoint, {
+    const url = endpoint.startsWith('/') ? `${apiBaseUrl}${endpoint}` : endpoint;
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

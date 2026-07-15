@@ -182,7 +182,7 @@ export default function UserProfileModal({
                 Phone Number
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Phone className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="tel"
                   value={phoneNumber}
@@ -199,7 +199,7 @@ export default function UserProfileModal({
                 Job Title
               </label>
               <div className="relative">
-                <Briefcase className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Briefcase className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   value={jobTitle}

@@ -801,8 +801,8 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-400">
-                  <Phone className="w-4 h-4" />
+                <span className="absolute right-3 top-3.5 text-gray-400">
+                  <Phone className="w-4 h-4 hidden" />
                 </span>
                 <input
                   id="register-phone"
@@ -818,8 +818,8 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-400">
-                  <Briefcase className="w-4 h-4" />
+                <span className="absolute right-3 top-3.5 text-gray-400">
+                  <Briefcase className="w-4 h-4 hidden" />
                 </span>
                 <input
                   id="register-job-title"
@@ -1003,13 +1003,13 @@ export function ForgotPasswordScreen({ onNavigate }: { onNavigate: (page: 'landi
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">Corporate Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@ess.gov.et"
+                placeholder="Email"
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-sm text-gray-955 dark:text-white"
               />
             </div>
