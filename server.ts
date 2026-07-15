@@ -135,6 +135,26 @@ const app = express();
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+  // Middleware to verify Supabase environment variables for API requests
+  app.use("/api", (req, res, next) => {
+    if (req.path === "/health") {
+      return next();
+    }
+    const missing = [];
+    if (!process.env.SUPABASE_URL) missing.push("SUPABASE_URL");
+    if (!process.env.SUPABASE_ANON_KEY) missing.push("SUPABASE_ANON_KEY");
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (missing.length > 0) {
+      return res.status(500).json({
+        error: {
+          message: `Configuration error: The following required Supabase environment variables are missing on the server: ${missing.join(", ")}. Please set them in your environment configurations.`
+        }
+      });
+    }
+    next();
+  });
+
   // API Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", mode: process.env.NODE_ENV });
