@@ -129,22 +129,22 @@ export default function PublicRequestForm({ departments, systems, onBack, onNavi
     const getDepartmentManagerInfo = (id: string): { id: string; name: string; email: string } => {
       switch (id) {
         case 'dep-dir':
-          return { id: 'user-mgr-dir', name: 'Director General Office Manager', email: 'manager.dir@company.com' };
+          return { id: 'user-mgr-dir', name: 'Director General Office Manager', email: 'manager.dir@ess.gov.et' };
         case 'dep-deputy':
-          return { id: 'user-mgr-deputy', name: 'Deputy Director Office Manager', email: 'manager.deputy@company.com' };
+          return { id: 'user-mgr-deputy', name: 'Deputy Director Office Manager', email: 'manager.deputy@ess.gov.et' };
         case 'dep-business':
-          return { id: 'user-mgr-business', name: 'Business Statistics Manager', email: 'manager.business@company.com' };
+          return { id: 'user-mgr-business', name: 'Business Statistics Manager', email: 'manager.business@ess.gov.et' };
         case 'dep-household':
-          return { id: 'user-mgr-household', name: 'Household Statistics Manager', email: 'manager.household@company.com' };
+          return { id: 'user-mgr-household', name: 'Household Statistics Manager', email: 'manager.household@ess.gov.et' };
         case 'dep-ict':
-          return { id: 'user-mgr-ict', name: 'ICT Coordinator', email: 'manager.ict@company.com' };
+          return { id: 'user-mgr-ict', name: 'ICT Coordinator', email: 'manager.ict@ess.gov.et' };
         case 'dep-hr':
-          return { id: 'user-mgr-hr', name: 'HR Manager', email: 'manager.hr@company.com' };
+          return { id: 'user-mgr-hr', name: 'HR Manager', email: 'manager.hr@ess.gov.et' };
         case 'dep-finance':
-          return { id: 'user-mgr-finance', name: 'Finance Manager', email: 'manager.finance@company.com' };
+          return { id: 'user-mgr-finance', name: 'Finance Manager', email: 'manager.finance@ess.gov.et' };
         case 'dep-other':
         default:
-          return { id: 'user-mgr-other', name: 'Branch Operations Manager', email: 'manager.other@company.com' };
+          return { id: 'user-mgr-other', name: 'Branch Operations Manager', email: 'manager.other@ess.gov.et' };
       }
     };
 
@@ -153,7 +153,7 @@ export default function PublicRequestForm({ departments, systems, onBack, onNavi
     const requestData: AccessRequest = {
       id: generatedId,
       userId: 'public-guest',
-      userEmail: email.trim() || 'public-guest@company.com',
+      userEmail: email.trim() || 'public-guest@ess.gov.et',
       userFullName: fullName.trim(),
       departmentId,
       title: `${selectedSystem} Access Request`,
@@ -187,7 +187,7 @@ export default function PublicRequestForm({ departments, systems, onBack, onNavi
       const { error } = await supabase.from('access_requests').insert({
         id: generatedId,
         user_id: null, // Public users don't have a login profiles ID
-        user_email: email.trim() || 'public-guest@company.com',
+        user_email: email.trim() || 'public-guest@ess.gov.et',
         user_full_name: fullName.trim(),
         department_id: departmentId,
         title: requestData.title,
@@ -231,7 +231,7 @@ export default function PublicRequestForm({ departments, systems, onBack, onNavi
           const logId = 'log-' + Math.random().toString(36).substring(2, 15);
           await supabase.from('audit_logs').insert({
             id: logId,
-            user_email: email.trim() || 'public-guest@company.com',
+            user_email: email.trim() || 'public-guest@ess.gov.et',
             user_role: 'User',
             action: 'Public Request Submission',
             details: `Public user ${fullName.trim()} (ID: ${employeeId.trim()}) submitted access request for ${selectedSystem} in department ${departmentId}. Status: Pending Department Approval.`,

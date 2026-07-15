@@ -165,7 +165,7 @@ export default function UserProfileModal({
                 Full Display Name
               </label>
               <div className="relative">
-                <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   required
@@ -182,12 +182,12 @@ export default function UserProfileModal({
                 Phone Number
               </label>
               <div className="relative">
-                <Phone className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+251 (911) 000-000"
+                  placeholder="+1 (555) 019-2834"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-gray-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                 />
               </div>
@@ -199,7 +199,7 @@ export default function UserProfileModal({
                 Job Title
               </label>
               <div className="relative">
-                <Briefcase className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+                <Briefcase className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   value={jobTitle}

@@ -1,6 +1,6 @@
 {
   "name": "User Access Request Portal",
   "description": "Centralized User Access Request Portal for the Ethiopian Statistics Service (ESS) to manage system credentials, department approvals, and audit trails.",
-  "requestFramePermissions": ["camera"]
-
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

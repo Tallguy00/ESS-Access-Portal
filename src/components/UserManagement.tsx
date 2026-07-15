@@ -131,7 +131,7 @@ export default function UserManagement({
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="name@company.com"
+                  placeholder="name@ess.gov.et"
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
                 />
               </div>

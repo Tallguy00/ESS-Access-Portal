@@ -691,7 +691,7 @@ export default function LandingPage({ onNavigate, theme, onToggleTheme }: Landin
                         required
                         value={contactForm.email}
                         onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                        placeholder="john.doe@company.com"
+                        placeholder="john.doe@ess.gov.et"
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none p-2.5 text-xs text-slate-800 dark:text-white"
                       />
                     </div>

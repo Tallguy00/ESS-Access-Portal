@@ -26,14 +26,34 @@ export const INITIAL_REQUESTS: AccessRequest[] = [];
 
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
-    id: '',
-    userEmail: '',
-    userRole: 'User',
-    action: '',
-    details: '',
-    createdAt: '',
-    ipAddress: '',
+    id: 'log-001',
+    userEmail: 'admin@ess.gov.et',
+    userRole: 'IT Admin',
+    action: 'Grant Access',
+    details: 'Completed access request and mapped authorized user to the ICT Shared Drive.',
+    createdAt: '2026-06-25T14:40:00Z',
+    ipAddress: '197.156.65.112',
     device: 'ThinkPad L14, Windows 11 (ESS ICT Lab)'
+  },
+  {
+    id: 'log-002',
+    userEmail: 'manager.ict@ess.gov.et',
+    userRole: 'Manager',
+    action: 'Approve Request',
+    details: 'Approved survey platform reader permissions.',
+    createdAt: '2026-07-01T16:22:00Z',
+    ipAddress: '197.156.65.45',
+    device: 'Dell Latitude, Chrome OS'
+  },
+  {
+    id: 'log-003',
+    userEmail: 'manager.ict@ess.gov.et',
+    userRole: 'Manager',
+    action: 'Reject Request',
+    details: 'Rejected emergency administrative database override on VMS due to ESS security compliance constraints.',
+    createdAt: '2026-06-27T13:45:00Z',
+    ipAddress: '197.156.65.45',
+    device: 'Dell Latitude, Chrome OS'
   }
 ];
 

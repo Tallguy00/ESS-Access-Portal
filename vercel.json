@@ -1,18 +1,17 @@
 {
-    "version": 2,
-    "rewrites": [
-      {
-        "source": "/api/:path*",
-        "destination": "/api/index.ts"
-      },
-      {
-        "source": "/auth/callback",
-        "destination": "/api/index.ts"
-      },
-      {
-        "source": "/:path*",
-        "destination": "/index.html"
-      }
-    ]
-  }
-  
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/api/index.ts"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}

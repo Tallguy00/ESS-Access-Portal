@@ -434,8 +434,8 @@ export default function SupportView({
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold">IT Support Email</p>
-                    <a href="mailto:support@company.com" className="text-xs font-black text-gray-900 dark:text-white hover:underline">
-                      support@company.com
+                    <a href="mailto:support@ess.gov.et" className="text-xs font-black text-gray-900 dark:text-white hover:underline">
+                      support@ess.gov.et
                     </a>
                   </div>
                 </div>
@@ -446,8 +446,8 @@ export default function SupportView({
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold">System Administrator</p>
-                    <a href="mailto:sysadmin@company.com" className="text-xs font-black text-gray-900 dark:text-white hover:underline">
-                      sysadmin@company.com
+                    <a href="mailto:sysadmin@ess.gov.et" className="text-xs font-black text-gray-900 dark:text-white hover:underline">
+                      sysadmin@ess.gov.et
                     </a>
                   </div>
                 </div>
