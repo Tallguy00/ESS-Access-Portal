@@ -63,13 +63,100 @@ const supabaseBackend = {
   }
 };
 
-async function getClientForSession(session: any): Promise<{ client: any; refreshedSession: any }> {
+// In-memory caching and deduplication of token refresh operations to prevent concurrent race conditions
+const activeRefreshes = new Map<string, Promise<any>>();
+const recentlyRefreshed = new Map<string, { session: any; timestamp: number }>();
+
+function cleanRecentlyRefreshed() {
+  const now = Date.now();
+  if (recentlyRefreshed.size > 500) {
+    for (const [key, val] of recentlyRefreshed.entries()) {
+      if (now - val.timestamp > 60000) {
+        recentlyRefreshed.delete(key);
+      }
+    }
+  }
+}
+
+async function refreshSessionDeduplicated(accessToken: string, refreshToken: string): Promise<{ session: any; error: any }> {
+  cleanRecentlyRefreshed();
+
+  // 1. Check if we recently finished refreshing this exact refresh token
+  const cached = recentlyRefreshed.get(refreshToken);
+  if (cached && (Date.now() - cached.timestamp < 30000)) {
+    console.log("Found recently refreshed session in cache for this refresh token!");
+    return { session: cached.session, error: null };
+  }
+
+  // 2. Check if there is an active refresh in progress for this refresh token
+  let refreshPromise = activeRefreshes.get(refreshToken);
+  if (refreshPromise) {
+    console.log("Joining in-progress refresh for this refresh token...");
+    try {
+      const session = await refreshPromise;
+      return { session, error: null };
+    } catch (err: any) {
+      return { session: null, error: err };
+    }
+  }
+
+  // 3. Otherwise, perform the refresh
+  const promise = (async () => {
+    console.log(`Refreshing session with Supabase auth.setSession...`);
+    const { data, error } = await getSupabaseBackend().auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (!data.session) {
+      throw new Error("No session returned from Supabase refresh");
+    }
+    
+    return data.session;
+  })();
+
+  activeRefreshes.set(refreshToken, promise);
+
+  try {
+    const session = await promise;
+    // Cache the result for subsequent requests that might still have the old refresh token
+    recentlyRefreshed.set(refreshToken, { session, timestamp: Date.now() });
+    return { session, error: null };
+  } catch (err: any) {
+    console.warn("Deduplicated refresh failed:", err.message || err);
+    return { session: null, error: err };
+  } finally {
+    activeRefreshes.delete(refreshToken);
+  }
+}
+
+function isPermanentRefreshError(error: any): boolean {
+  if (!error) return false;
+  const errStr = String(error.message || error || '').toLowerCase();
+  if (
+    errStr.includes("invalid refresh token") || 
+    errStr.includes("refresh token not found") || 
+    errStr.includes("refresh_token_not_found") ||
+    error.status === 400 || 
+    error.status === 401
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function getClientForSession(session: any): Promise<{ client: any; refreshedSession: any; clearSession?: boolean }> {
   if (!session?.access_token) {
     return { client: getSupabaseBackend(), refreshedSession: null };
   }
 
   let activeSession = session;
   let didRefresh = false;
+  let clearSession = false;
 
   try {
     const payloadBase64 = session.access_token.split('.')[1];
@@ -81,17 +168,20 @@ async function getClientForSession(session: any): Promise<{ client: any; refresh
       // If expired or within 60 seconds of expiring, refresh it
       if (exp && exp - now < 60 && session.refresh_token) {
         console.log("JWT expired or near expiration. Refreshing session...");
-        const { data, error } = await getSupabaseBackend().auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        });
+        const { session: newSession, error } = await refreshSessionDeduplicated(
+          session.access_token,
+          session.refresh_token
+        );
 
-        if (!error && data.session) {
+        if (!error && newSession) {
           console.log("Successfully refreshed session!");
-          activeSession = data.session;
+          activeSession = newSession;
           didRefresh = true;
         } else {
           console.error("Failed to refresh session on check:", error);
+          if (isPermanentRefreshError(error)) {
+            clearSession = true;
+          }
         }
       }
     }
@@ -107,7 +197,7 @@ async function getClientForSession(session: any): Promise<{ client: any; refresh
     },
   });
 
-  return { client, refreshedSession: didRefresh ? activeSession : null };
+  return { client, refreshedSession: didRefresh ? activeSession : null, clearSession };
 }
 
 const app = express();
@@ -181,6 +271,7 @@ app.post("/api/auth/session", async (req, res) => {
   try {
     let { session } = req.body || {};
     let refreshedSession: any = null;
+    let clearSession: boolean = false;
     if (session?.access_token && session?.refresh_token) {
       try {
         const payloadBase64 = session.access_token.split('.')[1];
@@ -190,13 +281,18 @@ app.post("/api/auth/session", async (req, res) => {
           const now = Math.floor(Date.now() / 1000);
           if (exp && exp - now < 60) {
             console.log("getSession session token expired or close. Refreshing...");
-            const { data, error } = await supabaseBackend.auth.setSession({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token
-            });
-            if (!error && data.session) {
-              session = data.session;
-              refreshedSession = data.session;
+            const { session: newSession, error } = await refreshSessionDeduplicated(
+              session.access_token,
+              session.refresh_token
+            );
+            if (!error && newSession) {
+              session = newSession;
+              refreshedSession = newSession;
+            } else if (isPermanentRefreshError(error)) {
+              console.warn("Permanent refresh error on getSession. Clearing session.");
+              session = null;
+              refreshedSession = null;
+              clearSession = true;
             }
           }
         }
@@ -204,7 +300,7 @@ app.post("/api/auth/session", async (req, res) => {
         console.warn("getSession JWT check failed:", err);
       }
     }
-    res.json({ data: { session }, error: null, refreshedSession });
+    res.json({ data: { session }, error: null, refreshedSession, clearSession });
   } catch (err: any) {
     console.error("Session check API failed:", err);
     res.status(500).json({ error: { message: err.message || "Session check failed" } });
@@ -219,24 +315,32 @@ app.post("/api/auth/user", async (req, res) => {
     }
     let { data, error } = await supabaseBackend.auth.getUser(session.access_token);
     let refreshedSession: any = null;
+    let clearSession: boolean = false;
 
     if (error && session.refresh_token && (error.message?.toLowerCase().includes("jwt") || error.message?.toLowerCase().includes("expired"))) {
       console.log("getUser failed with JWT error. Attempting session refresh...");
-      const refreshResult = await supabaseBackend.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-      if (!refreshResult.error && refreshResult.data.session) {
+      const { session: newSession, error: refreshErr } = await refreshSessionDeduplicated(
+        session.access_token,
+        session.refresh_token
+      );
+      if (!refreshErr && newSession) {
         console.log("getUser session refresh succeeded!");
-        session = refreshResult.data.session;
-        refreshedSession = refreshResult.data.session;
+        session = newSession;
+        refreshedSession = newSession;
         const retryUser = await supabaseBackend.auth.getUser(session.access_token);
         data = retryUser.data;
         error = retryUser.error;
+      } else if (isPermanentRefreshError(refreshErr)) {
+        console.warn("Permanent refresh error on getUser. Clearing session.");
+        session = null;
+        refreshedSession = null;
+        data = { user: null };
+        error = { message: "Session expired" };
+        clearSession = true;
       }
     }
 
-    res.json({ data, error: error ? { message: error.message } : null, refreshedSession });
+    res.json({ data, error: error ? { message: error.message } : null, refreshedSession, clearSession });
   } catch (err: any) {
     console.error("User fetch API failed:", err);
     res.status(500).json({ error: { message: err.message || "User fetch failed" } });
@@ -410,7 +514,11 @@ app.post("/api/db/query", async (req, res) => {
     if (!table) {
       return res.status(400).json({ error: { message: "Table name is required" } });
     }
-    const { client, refreshedSession } = await getClientForSession(session);
+    const { client, refreshedSession, clearSession } = await getClientForSession(session);
+    if (clearSession) {
+      return res.status(401).json({ error: { message: "Session expired" }, clearSession: true });
+    }
+
     let query: any = client.from(table);
     for (const step of chain || []) {
       const { method, args } = step;
@@ -423,16 +531,16 @@ app.post("/api/db/query", async (req, res) => {
     // Check if result has expired JWT error, and try force-refreshing if we haven't already refreshed
     if (!refreshedSession && session?.refresh_token && (result.error?.message?.toLowerCase().includes("jwt") || result.error?.message?.toLowerCase().includes("expired") || result.error?.status === 401)) {
       console.log("Query returned JWT error. Attempting forced session refresh...");
-      const { data, error } = await getSupabaseBackend().auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-      if (!error && data.session) {
+      const { session: forcedSession, error } = await refreshSessionDeduplicated(
+        session.access_token,
+        session.refresh_token
+      );
+      if (!error && forcedSession) {
         console.log("Forced refresh succeeded! Retrying query with new session...");
         const retryClient = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
           global: {
             headers: {
-              Authorization: `Bearer ${data.session.access_token}`,
+              Authorization: `Bearer ${forcedSession.access_token}`,
             },
           },
         });
@@ -447,15 +555,30 @@ app.post("/api/db/query", async (req, res) => {
         return res.json({
           data: result.data,
           error: result.error ? { message: result.error.message } : null,
-          refreshedSession: data.session
+          refreshedSession: forcedSession
         });
+      } else if (isPermanentRefreshError(error)) {
+        console.warn("Forced refresh returned permanent refresh error. Requesting session clearance.");
+        return res.status(401).json({
+          error: { message: "Session expired" },
+          clearSession: true
+        });
+      }
+    }
+
+    let isExpiredError = false;
+    if (result.error) {
+      const msg = String(result.error.message || '').toLowerCase();
+      if (msg.includes("jwt") || msg.includes("expired") || result.error.status === 401) {
+        isExpiredError = true;
       }
     }
 
     res.json({
       data: result.data,
       error: result.error ? { message: result.error.message } : null,
-      refreshedSession
+      refreshedSession: refreshedSession || null,
+      clearSession: isExpiredError ? true : undefined
     });
   } catch (err: any) {
     console.error(`Database query failed on table "${req.body?.table}":`, err);

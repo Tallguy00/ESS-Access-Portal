@@ -317,6 +317,20 @@ export default function App() {
           setSessionUserEmail(loginKey);
           localStorage.setItem('ar_session_user_email', loginKey);
           setCurrentPage('dashboard');
+        } else {
+          setSessionUserEmail(null);
+          localStorage.removeItem('ar_session_user_email');
+          setCurrentPage(prev => (
+            prev === 'landing' || 
+            prev === 'login' || 
+            prev === 'register' || 
+            prev === 'forgot' || 
+            prev === 'reset' || 
+            prev === 'public-request' || 
+            prev === 'public-track' 
+              ? prev 
+              : 'landing'
+          ));
         }
       } catch (err) {
         console.warn("Could not pre-recover active Supabase session:", err);
@@ -332,6 +346,20 @@ export default function App() {
           setSessionUserEmail(loginKey);
           localStorage.setItem('ar_session_user_email', loginKey);
           setCurrentPage('dashboard');
+        } else {
+          setSessionUserEmail(null);
+          localStorage.removeItem('ar_session_user_email');
+          setCurrentPage(prev => (
+            prev === 'landing' || 
+            prev === 'login' || 
+            prev === 'register' || 
+            prev === 'forgot' || 
+            prev === 'reset' || 
+            prev === 'public-request' || 
+            prev === 'public-track' 
+              ? prev 
+              : 'landing'
+          ));
         }
       });
       subscription = data?.subscription;
@@ -359,6 +387,10 @@ export default function App() {
           .order('created_at', { ascending: true });
           
         if (error) {
+          if (error.message === "Session expired") {
+            console.log("Session expired. Gracefully stopping fetchProfilesFromDB.");
+            return;
+          }
           console.error("Error fetching profiles from Supabase DB:", error);
           return;
         }
@@ -418,7 +450,8 @@ export default function App() {
             return merged;
           });
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.message === "Session expired") return;
         console.error("Failed to load profiles from DB:", err);
       }
     };
@@ -436,6 +469,10 @@ export default function App() {
         .order('created_at', { ascending: false });
         
       if (error) {
+        if (error.message === "Session expired") {
+          console.log("Session expired. Gracefully stopping fetchRequestsFromDB.");
+          return;
+        }
         console.error("Error fetching requests from Supabase DB:", error);
         return;
       }
@@ -471,7 +508,8 @@ export default function App() {
         
         setRequests(mappedRequests);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "Session expired") return;
       console.error("Failed to load requests from DB:", err);
     }
   }, [currentUser]);
@@ -510,6 +548,10 @@ export default function App() {
           .order('created_at', { ascending: false });
           
         if (error) {
+          if (error.message === "Session expired") {
+            console.log("Session expired. Gracefully stopping fetchAuditLogsFromDB.");
+            return;
+          }
           console.error("Error fetching audit logs from Supabase DB:", error);
           return;
         }
@@ -528,7 +570,8 @@ export default function App() {
           
           setAuditLogs(mappedLogs);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.message === "Session expired") return;
         console.error("Failed to load audit logs from DB:", err);
       }
     };
@@ -547,6 +590,10 @@ export default function App() {
           .order('created_at', { ascending: false });
           
         if (error) {
+          if (error.message === "Session expired") {
+            console.log("Session expired. Gracefully stopping fetchNotificationsFromDB.");
+            return;
+          }
           console.error("Error fetching notifications from Supabase DB:", error);
           return;
         }
@@ -563,7 +610,8 @@ export default function App() {
           
           setNotifications(mappedNotifications);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.message === "Session expired") return;
         console.error("Failed to load notifications from DB:", err);
       }
     };

@@ -25,12 +25,24 @@ async function apiCall(endpoint, data) {
       body: JSON.stringify(data),
     });
     
+    const isJson = response.headers.get("content-type")?.includes("application/json");
+    let resData = {};
+    if (isJson) {
+      resData = await response.json().catch(() => ({}));
+    }
+
+    if (resData.clearSession) {
+      console.warn("API returned clearSession=true. Clearing active session...");
+      activeSession = null;
+      localStorage.removeItem("ar_active_session");
+      notifyAuthListeners("SIGNED_OUT", null);
+    }
+
     if (!response.ok) {
-      const errRes = await response.json().catch(() => ({}));
-      return { data: null, error: errRes.error || { message: `HTTP error ${response.status}` } };
+      return { data: null, error: resData.error || { message: `HTTP error ${response.status}` }, clearSession: resData.clearSession };
     }
     
-    return await response.json();
+    return resData;
   } catch (err) {
     console.error(`API Call to ${endpoint} failed:`, err);
     return { data: null, error: { message: err.message || "Network request failed" } };
@@ -84,10 +96,14 @@ export const supabase = {
       if (res.refreshedSession) {
         activeSession = res.refreshedSession;
         localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
-      } else if (res.data?.session) {
+      } else if (res.data && 'session' in res.data) {
         activeSession = res.data.session;
-        localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
-      } else {
+        if (activeSession) {
+          localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
+        } else {
+          localStorage.removeItem("ar_active_session");
+        }
+      } else if (res.clearSession) {
         activeSession = null;
         localStorage.removeItem("ar_active_session");
       }
@@ -100,6 +116,9 @@ export const supabase = {
         activeSession = res.refreshedSession;
         localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
         notifyAuthListeners("SIGNED_IN", activeSession);
+      } else if (res.clearSession) {
+        activeSession = null;
+        localStorage.removeItem("ar_active_session");
       }
       return { data: { user: res.data?.user || null }, error: res.error || null };
     },
