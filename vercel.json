@@ -12,6 +12,13 @@
     {
       "source": "/:path*",
       "destination": "/index.html"
+    },
+    {
+      "functions": {
+        "api/index.ts": {
+          "runtime": "nodejs22.x"
+        }
+      }
     }
   ]
 }
