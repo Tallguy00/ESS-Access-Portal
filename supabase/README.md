@@ -23,7 +23,7 @@ This directory contains the database migration schema to connect your corporate 
 1. Open your project in the [Supabase Dashboard](https://supabase.com).
 2. Navigate to the **SQL Editor** in the left sidebar.
 3. Click **New Query**.
-4. Copy the entire content of `migrations/20260623000000_init_schema.sql` and paste it into the SQL Editor.
+4. Copy the entire content of `migrations/maindb.sql` and paste it into the SQL Editor.
 5. Click **Run**. All tables, constraints, functions, RLS policies, and default seeds will be deployed immediately.
 
 ### Option B: Via Supabase CLI

@@ -165,7 +165,7 @@ export default function UserProfileModal({
                 Full Display Name
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <User className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   required

@@ -27,73 +27,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey || 'placeholder-ke
 const defaultUsers = [
   {
     email: 'admin@ess.gov.et',
-    password: 'AdminIT123',
+    password: '',
     fullName: 'IT Administrator',
     role: 'IT Admin',
     departmentId: 'dep-ict',
-  },
-  {
-    email: 'super@ess.gov.et',
-    password: 'SuperAdmin123',
-    fullName: 'Super Administrator',
-    role: 'Super Admin',
-    departmentId: 'dep-ict',
-  },
-  {
-    email: 'manager.dir@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Director General Office Manager',
-    role: 'Manager',
-    departmentId: 'dep-dir',
-  },
-  {
-    email: 'manager.deputy@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Deputy Director Office Manager',
-    role: 'Manager',
-    departmentId: 'dep-deputy',
-  },
-  {
-    email: 'manager.business@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Business Statistics Manager',
-    role: 'Manager',
-    departmentId: 'dep-business',
-  },
-  {
-    email: 'manager.household@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Household Statistics Manager',
-    role: 'Manager',
-    departmentId: 'dep-household',
-  },
-  {
-    email: 'manager.ict@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'ICT Coordinator',
-    role: 'Manager',
-    departmentId: 'dep-ict',
-  },
-  {
-    email: 'manager.hr@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'HR Manager',
-    role: 'Manager',
-    departmentId: 'dep-hr',
-  },
-  {
-    email: 'manager.finance@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Finance Manager',
-    role: 'Manager',
-    departmentId: 'dep-finance',
-  },
-  {
-    email: 'manager.other@ess.gov.et',
-    password: 'Manager123',
-    fullName: 'Branch Operations Manager',
-    role: 'Manager',
-    departmentId: 'dep-other',
   }
 
 ];
