@@ -250,12 +250,41 @@ export const supabase = {
       return { data: null, error: { message: "Could not generate authorization URL" } };
     },
 
-    async updateUser({ data }) {
-      const res = await apiCall("/api/auth/update-user", { data, session: activeSession });
+    async updateUser(attributes) {
+      const res = await apiCall("/api/auth/update-user", { data: attributes, session: activeSession });
       if (res.data?.session) {
         activeSession = res.data.session;
         localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
       }
+      return { data: res.data || {}, error: res.error || null };
+    },
+
+    async linkIdentity({ provider, options }) {
+      const currentOrigin = window.location.origin;
+      const callbackUrl = `${currentOrigin}/auth/callback`;
+      
+      const res = await apiCall("/api/auth/link-identity", {
+        provider,
+        options: {
+          ...options,
+          redirectTo: options?.redirectTo || callbackUrl
+        },
+        session: activeSession
+      });
+      if (res.error) {
+        return { data: null, error: res.error };
+      }
+      if (res.data?.url) {
+        return { data: { provider, url: res.data.url }, error: null };
+      }
+      return { data: null, error: { message: "Could not generate link authorization URL" } };
+    },
+
+    async unlinkIdentity(identity) {
+      const res = await apiCall("/api/auth/unlink-identity", {
+        identity,
+        session: activeSession
+      });
       return { data: res.data || {}, error: res.error || null };
     },
   },

@@ -50,6 +50,32 @@ export default function ProfileView({
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+  // Authentication provider states for Identity Linking
+  const [authUser, setAuthUser] = useState<any>(null);
+  const [isLinking, setIsLinking] = useState(false);
+  const [unlinkLoading, setUnlinkLoading] = useState<string | null>(null);
+
+  // Password setting for Google sign-ups
+  const [linkPassword, setLinkPassword] = useState('');
+  const [confirmLinkPassword, setConfirmLinkPassword] = useState('');
+  const [showLinkPasswordForm, setShowLinkPasswordForm] = useState(false);
+  const [showLinkPassword, setShowLinkPassword] = useState(false);
+  const [showConfirmLinkPassword, setShowConfirmLinkPassword] = useState(false);
+  const [linkPasswordError, setLinkPasswordError] = useState('');
+
+  const fetchAuthUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setAuthUser(user);
+    } catch (err) {
+      console.warn("Could not fetch active Auth User details:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuthUser();
+  }, []);
+
   // Determine if the current user is an administrator
   const isAdmin = currentUser.role === 'IT Admin' || currentUser.role === 'Super Admin';
 
@@ -217,6 +243,131 @@ export default function ProfileView({
       setPasswordError(err.message || 'Failed to update password with corporate identity provider.');
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  // Google connect/disconnect and password handlers
+  const handleConnectGoogle = async () => {
+    try {
+      setIsLinking(true);
+      showToast('Initiating Google Account connection...', 'info');
+      
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider: 'google'
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No link URL returned from auth gateway.");
+      }
+    } catch (err: any) {
+      console.error("Failed to link Google identity:", err);
+      showToast(err.message || 'Google account connection failed. Please try again.', 'error');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleSetPasswordAndLinkEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLinkPasswordError('');
+    
+    if (linkPassword.length < 8) {
+      setLinkPasswordError('Password must be at least 8 characters.');
+      return;
+    }
+    
+    const hasUpper = /[A-Z]/.test(linkPassword);
+    const hasLower = /[a-z]/.test(linkPassword);
+    const hasNum = /[0-9]/.test(linkPassword);
+    const hasSpec = /[^A-Za-z0-9]/.test(linkPassword);
+    
+    if (!hasUpper || !hasLower || !hasNum || !hasSpec) {
+      setLinkPasswordError('Password must meet all corporate strength requirements (length, uppercase, lowercase, number, special character).');
+      return;
+    }
+
+    if (linkPassword !== confirmLinkPassword) {
+      setLinkPasswordError('Passwords do not match.');
+      return;
+    }
+    
+    try {
+      setIsLinking(true);
+      const { error } = await supabase.auth.updateUser({
+        password: linkPassword
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      showToast('Email & Password login successfully enabled for your account!', 'success');
+      setShowLinkPasswordForm(false);
+      setLinkPassword('');
+      setConfirmLinkPassword('');
+      await fetchAuthUser();
+    } catch (err: any) {
+      console.error("Failed to enable password login:", err);
+      setLinkPasswordError(err.message || 'Failed to enable password login. Please try again.');
+      showToast(err.message || 'Password link failed.', 'error');
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleDisconnectProvider = async (provider: 'google' | 'email') => {
+    const providers = authUser?.app_metadata?.providers || [];
+    const identities = authUser?.identities || [];
+    const hasGoogle = providers.includes('google') || identities.some((id: any) => id.provider === 'google');
+    const hasEmail = providers.includes('email') || identities.some((id: any) => id.provider === 'email');
+
+    if (!hasGoogle || !hasEmail) {
+      showToast('You must keep at least one authentication method connected to prevent lock-out.', 'error');
+      return;
+    }
+    
+    try {
+      setUnlinkLoading(provider);
+      showToast(`Disconnecting ${provider === 'google' ? 'Google' : 'Email & Password'}...`, 'info');
+      
+      if (provider === 'google') {
+        const googleIdentity = identities.find((id: any) => id.provider === 'google');
+        if (!googleIdentity) {
+          throw new Error("Google identity not found on your account.");
+        }
+        
+        const { error } = await supabase.auth.unlinkIdentity(googleIdentity);
+        if (error) {
+          throw error;
+        }
+        
+        showToast('Google account disconnected successfully!', 'success');
+      } else {
+        const emailIdentity = identities.find((id: any) => id.provider === 'email');
+        if (!emailIdentity) {
+          throw new Error("Email identity not found on your account.");
+        }
+        
+        const { error } = await supabase.auth.unlinkIdentity(emailIdentity);
+        if (error) {
+          throw error;
+        }
+        
+        showToast('Email & Password credentials removed successfully!', 'success');
+      }
+      
+      await fetchAuthUser();
+    } catch (err: any) {
+      console.error(`Failed to disconnect ${provider}:`, err);
+      showToast(err.message || `Failed to disconnect ${provider}.`, 'error');
+    } finally {
+      setUnlinkLoading(null);
     }
   };
 
@@ -699,6 +850,244 @@ export default function ProfileView({
                 </ul>
               </div>
 
+            </div>
+
+            {/* Authentication Methods / Identity Linking Card */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-2xl p-6 shadow-sm mt-6">
+              <h3 className="text-sm font-black text-gray-950 dark:text-white tracking-tight flex items-center gap-1.5 mb-1">
+                <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Connected Authentication Providers</span>
+              </h3>
+              <p className="text-xs text-gray-400 dark:text-gray-450 mb-6">
+                Manage linked identity systems securely to allow sign-in with multiple directory options.
+              </p>
+
+              <div className="space-y-4">
+                {/* Google Provider Option */}
+                <div className="p-4 border border-gray-100 dark:border-gray-850 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-850/20">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
+                      {/* Google Icon SVG */}
+                      <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-gray-900 dark:text-white">Google Identity Connection</h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-450 mt-0.5">
+                        Link your Google Account to enable single-sign-on access.
+                      </p>
+                      {authUser && (
+                        <span className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md text-[10px] font-black ${
+                          authUser.app_metadata?.providers?.includes('google') || authUser.identities?.some((id: any) => id.provider === 'google')
+                            ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-950/40'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-150 dark:border-gray-750'
+                        }`}>
+                          {authUser.app_metadata?.providers?.includes('google') || authUser.identities?.some((id: any) => id.provider === 'google') ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" />
+                              <span>GOOGLE CONNECTED</span>
+                            </>
+                          ) : (
+                            <span>NOT CONNECTED</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center shrink-0">
+                    {authUser && (authUser.app_metadata?.providers?.includes('google') || authUser.identities?.some((id: any) => id.provider === 'google')) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectProvider('google')}
+                        disabled={unlinkLoading !== null || isLinking || !(authUser.app_metadata?.providers?.includes('email') || authUser.identities?.some((id: any) => id.provider === 'email'))}
+                        className="px-4 py-2 border border-rose-100 dark:border-rose-950/40 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-rose-700 dark:text-rose-450 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={!(authUser.app_metadata?.providers?.includes('email') || authUser.identities?.some((id: any) => id.provider === 'email')) ? "You must keep at least one sign-in method linked." : ""}
+                      >
+                        {unlinkLoading === 'google' ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin"></div>
+                            <span>Disconnecting...</span>
+                          </>
+                        ) : (
+                          <span>Disconnect Google</span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleConnectGoogle}
+                        disabled={isLinking || unlinkLoading !== null}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isLinking ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Connecting...</span>
+                          </>
+                        ) : (
+                          <span>Connect Google Account</span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email / Password Option */}
+                <div className="p-4 border border-gray-100 dark:border-gray-850 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-850/20">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl">
+                      <Mail className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xs font-black text-gray-900 dark:text-white">Email & Password Credentials</h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-450 mt-0.5">
+                        Enable account sign-in using corporate email address and secure password.
+                      </p>
+                      {authUser && (
+                        <span className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md text-[10px] font-black ${
+                          authUser.app_metadata?.providers?.includes('email') || authUser.identities?.some((id: any) => id.provider === 'email')
+                            ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-950/40'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-150 dark:border-gray-750'
+                        }`}>
+                          {authUser.app_metadata?.providers?.includes('email') || authUser.identities?.some((id: any) => id.provider === 'email') ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" />
+                              <span>EMAIL & PASSWORD ENABLED</span>
+                            </>
+                          ) : (
+                            <span>NOT ENABLED</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center shrink-0">
+                    {authUser && (authUser.app_metadata?.providers?.includes('email') || authUser.identities?.some((id: any) => id.provider === 'email')) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnectProvider('email')}
+                        disabled={unlinkLoading !== null || isLinking || !(authUser.app_metadata?.providers?.includes('google') || authUser.identities?.some((id: any) => id.provider === 'google'))}
+                        className="px-4 py-2 border border-rose-100 dark:border-rose-950/40 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-rose-700 dark:text-rose-450 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={!(authUser.app_metadata?.providers?.includes('google') || authUser.identities?.some((id: any) => id.provider === 'google')) ? "You must keep at least one sign-in method linked." : ""}
+                      >
+                        {unlinkLoading === 'email' ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin"></div>
+                            <span>Removing...</span>
+                          </>
+                        ) : (
+                          <span>Disconnect Email/Password</span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkPasswordForm(!showLinkPasswordForm)}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Add Email & Password</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Set Password Form (Inline slide-down form) */}
+                {showLinkPasswordForm && (
+                  <form onSubmit={handleSetPasswordAndLinkEmail} className="mt-4 p-5 border border-indigo-100 dark:border-indigo-950/40 rounded-2xl bg-indigo-50/10 dark:bg-indigo-950/5 space-y-4 animate-fade-in">
+                    <h4 className="text-xs font-black text-indigo-950 dark:text-indigo-300">Set Account Password</h4>
+                    <p className="text-[11px] text-gray-500 leading-normal">
+                      Provide a corporate security-compliant password to enable Email & Password login for <strong>{currentUser.email}</strong>.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* New Password */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black uppercase text-gray-450 dark:text-gray-400">
+                          Account Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showLinkPassword ? 'text' : 'password'}
+                            required
+                            value={linkPassword}
+                            onChange={(e) => setLinkPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full pl-3.5 pr-10 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-gray-950 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-blue-500 text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowLinkPassword(!showLinkPassword)}
+                            className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-transparent border-none cursor-pointer p-0"
+                          >
+                            {showLinkPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black uppercase text-gray-450 dark:text-gray-400">
+                          Confirm Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmLinkPassword ? 'text' : 'password'}
+                            required
+                            value={confirmLinkPassword}
+                            onChange={(e) => setConfirmLinkPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full pl-3.5 pr-10 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-gray-950 dark:text-white focus:outline-none focus:ring-1.5 focus:ring-blue-500 text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmLinkPassword(!showConfirmLinkPassword)}
+                            className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-transparent border-none cursor-pointer p-0"
+                          >
+                            {showConfirmLinkPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {linkPasswordError && (
+                      <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-950/40 text-rose-700 dark:text-rose-400 text-xs rounded-xl flex items-start gap-2">
+                        <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{linkPasswordError}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkPasswordForm(false)}
+                        className="px-4 py-2 border border-gray-200 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 font-bold text-xs rounded-xl cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isLinking}
+                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {isLinking ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Enabling security...</span>
+                          </>
+                        ) : (
+                          <span>Enable Email & Password</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
 
           </div>

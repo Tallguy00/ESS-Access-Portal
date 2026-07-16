@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
-import logger from "./logger";
 
 // Validation helper for environment variables
 function getSupabaseUrl(): string {
@@ -85,14 +84,14 @@ async function refreshSessionDeduplicated(accessToken: string, refreshToken: str
   // 1. Check if we recently finished refreshing this exact refresh token
   const cached = recentlyRefreshed.get(refreshToken);
   if (cached && (Date.now() - cached.timestamp < 30000)) {
-    logger.info("Found recently refreshed session in cache for this refresh token!");
+    console.log("Found recently refreshed session in cache for this refresh token!");
     return { session: cached.session, error: null };
   }
 
   // 2. Check if there is an active refresh in progress for this refresh token
   let refreshPromise = activeRefreshes.get(refreshToken);
   if (refreshPromise) {
-    logger.info("Joining in-progress refresh for this refresh token...");
+    console.log("Joining in-progress refresh for this refresh token...");
     try {
       const session = await refreshPromise;
       return { session, error: null };
@@ -103,7 +102,7 @@ async function refreshSessionDeduplicated(accessToken: string, refreshToken: str
 
   // 3. Otherwise, perform the refresh
   const promise = (async () => {
-    logger.info(`Refreshing session with Supabase auth.setSession...`);
+    console.log(`Refreshing session with Supabase auth.setSession...`);
     const { data, error } = await getSupabaseBackend().auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken
@@ -128,7 +127,7 @@ async function refreshSessionDeduplicated(accessToken: string, refreshToken: str
     recentlyRefreshed.set(refreshToken, { session, timestamp: Date.now() });
     return { session, error: null };
   } catch (err: any) {
-    logger.warn("Deduplicated refresh failed: %s", err.message || err);
+    console.warn("Deduplicated refresh failed:", err.message || err);
     return { session: null, error: err };
   } finally {
     activeRefreshes.delete(refreshToken);
@@ -168,18 +167,18 @@ async function getClientForSession(session: any): Promise<{ client: any; refresh
 
       // If expired or within 60 seconds of expiring, refresh it
       if (exp && exp - now < 60 && session.refresh_token) {
-        logger.info("JWT expired or near expiration. Refreshing session...");
+        console.log("JWT expired or near expiration. Refreshing session...");
         const { session: newSession, error } = await refreshSessionDeduplicated(
           session.access_token,
           session.refresh_token
         );
 
         if (!error && newSession) {
-          logger.info("Successfully refreshed session!");
+          console.log("Successfully refreshed session!");
           activeSession = newSession;
           didRefresh = true;
         } else {
-          logger.error("Failed to refresh session on check: %o", error);
+          console.error("Failed to refresh session on check:", error);
           if (isPermanentRefreshError(error)) {
             clearSession = true;
           }
@@ -187,7 +186,7 @@ async function getClientForSession(session: any): Promise<{ client: any; refresh
       }
     }
   } catch (err) {
-    logger.warn("Error decoding/refreshing token: %o", err);
+    console.warn("Error decoding/refreshing token:", err);
   }
 
   const client = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
@@ -235,7 +234,7 @@ app.use("/api", (req, res, next) => {
   if (!process.env.SUPABASE_ANON_KEY) missing.push("SUPABASE_ANON_KEY");
 
   if (missing.length > 0) {
-    logger.error(`❌ Regular API Error: Missing environment variables: ${missing.join(", ")}`);
+    console.error(`❌ Regular API Error: Missing environment variables: ${missing.join(", ")}`);
     return res.status(500).json({
       error: {
         message: `Configuration error: The following required Supabase environment variables are missing on the server: ${missing.join(", ")}. Please set them in your environment configurations.`
@@ -251,7 +250,7 @@ app.use("/api/admin", (req, res, next) => {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
 
   if (missing.length > 0) {
-    logger.error(`❌ Admin API Error: Missing Service Role Key: ${missing.join(", ")}`);
+    console.error(`❌ Admin API Error: Missing Service Role Key: ${missing.join(", ")}`);
     return res.status(500).json({
       error: {
         message: `Configuration error: The following required admin environment variables are missing on the server: ${missing.join(", ")}. Please set them in your environment configurations.`
@@ -281,7 +280,7 @@ app.post("/api/auth/session", async (req, res) => {
           const exp = payload.exp;
           const now = Math.floor(Date.now() / 1000);
           if (exp && exp - now < 60) {
-            logger.info("getSession session token expired or close. Refreshing...");
+            console.log("getSession session token expired or close. Refreshing...");
             const { session: newSession, error } = await refreshSessionDeduplicated(
               session.access_token,
               session.refresh_token
@@ -290,7 +289,7 @@ app.post("/api/auth/session", async (req, res) => {
               session = newSession;
               refreshedSession = newSession;
             } else if (isPermanentRefreshError(error)) {
-              logger.warn("Permanent refresh error on getSession. Clearing session.");
+              console.warn("Permanent refresh error on getSession. Clearing session.");
               session = null;
               refreshedSession = null;
               clearSession = true;
@@ -298,12 +297,12 @@ app.post("/api/auth/session", async (req, res) => {
           }
         }
       } catch (err) {
-        logger.warn("getSession JWT check failed: %o", err);
+        console.warn("getSession JWT check failed:", err);
       }
     }
     res.json({ data: { session }, error: null, refreshedSession, clearSession });
   } catch (err: any) {
-    logger.error("Session check API failed: %o", err);
+    console.error("Session check API failed:", err);
     res.status(500).json({ error: { message: err.message || "Session check failed" } });
   }
 });
@@ -319,20 +318,20 @@ app.post("/api/auth/user", async (req, res) => {
     let clearSession: boolean = false;
 
     if (error && session.refresh_token && (error.message?.toLowerCase().includes("jwt") || error.message?.toLowerCase().includes("expired"))) {
-      logger.info("getUser failed with JWT error. Attempting session refresh...");
+      console.log("getUser failed with JWT error. Attempting session refresh...");
       const { session: newSession, error: refreshErr } = await refreshSessionDeduplicated(
         session.access_token,
         session.refresh_token
       );
       if (!refreshErr && newSession) {
-        logger.info("getUser session refresh succeeded!");
+        console.log("getUser session refresh succeeded!");
         session = newSession;
         refreshedSession = newSession;
         const retryUser = await supabaseBackend.auth.getUser(session.access_token);
         data = retryUser.data;
         error = retryUser.error;
       } else if (isPermanentRefreshError(refreshErr)) {
-        logger.warn("Permanent refresh error on getUser. Clearing session.");
+        console.warn("Permanent refresh error on getUser. Clearing session.");
         session = null;
         refreshedSession = null;
         data = { user: null };
@@ -343,7 +342,7 @@ app.post("/api/auth/user", async (req, res) => {
 
     res.json({ data, error: error ? { message: error.message } : null, refreshedSession, clearSession });
   } catch (err: any) {
-    logger.error("User fetch API failed: %o", err);
+    console.error("User fetch API failed:", err);
     res.status(500).json({ error: { message: err.message || "User fetch failed" } });
   }
 });
@@ -354,7 +353,7 @@ app.post("/api/auth/signup", async (req, res) => {
     const { data, error } = await supabaseBackend.auth.signUp({ email, password, options });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("Signup API failed: %o", err);
+    console.error("Signup API failed:", err);
     res.status(500).json({ error: { message: err.message || "Signup failed" } });
   }
 });
@@ -365,7 +364,7 @@ app.post("/api/auth/login", async (req, res) => {
     const { data, error } = await supabaseBackend.auth.signInWithPassword({ email, password });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("Login API failed: %o", err);
+    console.error("Login API failed:", err);
     res.status(500).json({ error: { message: err.message || "Login failed" } });
   }
 });
@@ -376,7 +375,7 @@ app.post("/api/auth/login-otp", async (req, res) => {
     const { data, error } = await supabaseBackend.auth.signInWithOtp({ email, options });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("OTP login API failed: %o", err);
+    console.error("OTP login API failed:", err);
     res.status(500).json({ error: { message: err.message || "OTP login failed" } });
   }
 });
@@ -387,7 +386,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     const { data, error } = await supabaseBackend.auth.verifyOtp({ email, token, type });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("OTP verify API failed: %o", err);
+    console.error("OTP verify API failed:", err);
     res.status(500).json({ error: { message: err.message || "OTP verification failed" } });
   }
 });
@@ -405,7 +404,7 @@ app.post("/api/auth/oauth-url", async (req, res) => {
     });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("OAuth URL generation API failed: %o", err);
+    console.error("OAuth URL generation API failed:", err);
     res.status(500).json({ error: { message: err.message || "OAuth URL generation failed" } });
   }
 });
@@ -415,19 +414,60 @@ app.post("/api/auth/logout", async (req, res) => {
     const { error } = await supabaseBackend.auth.signOut();
     res.json({ success: !error, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("Logout API failed: %o", err);
+    console.error("Logout API failed:", err);
     res.status(500).json({ success: false, error: { message: err.message || "Logout failed" } });
   }
 });
 
 app.post("/api/auth/update-user", async (req, res) => {
   try {
-    const { data: userData } = req.body || {};
-    const { data, error } = await supabaseBackend.auth.updateUser(userData);
-    res.json({ data, error: error ? { message: error.message } : null });
+    const { data: userData, session } = req.body || {};
+    const { client, refreshedSession, clearSession } = await getClientForSession(session);
+    if (clearSession) {
+      return res.status(401).json({ error: { message: "Session expired" }, clearSession: true });
+    }
+    const { data, error } = await client.auth.updateUser(userData);
+    res.json({ data, error: error ? { message: error.message } : null, refreshedSession, clearSession });
   } catch (err: any) {
-    logger.error("Update user API failed: %o", err);
+    console.error("Update user API failed:", err);
     res.status(500).json({ error: { message: err.message || "Update user failed" } });
+  }
+});
+
+app.post("/api/auth/link-identity", async (req, res) => {
+  try {
+    const { provider, options, session } = req.body || {};
+    const { client, refreshedSession, clearSession } = await getClientForSession(session);
+    if (clearSession) {
+      return res.status(401).json({ error: { message: "Session expired" }, clearSession: true });
+    }
+    const { data, error } = await client.auth.linkIdentity({
+      provider,
+      options: {
+        redirectTo: options?.redirectTo,
+        queryParams: options?.queryParams,
+        scopes: options?.scopes
+      }
+    });
+    res.json({ data, error: error ? { message: error.message } : null, refreshedSession, clearSession });
+  } catch (err: any) {
+    console.error("Link identity API failed:", err);
+    res.status(500).json({ error: { message: err.message || "Link identity failed" } });
+  }
+});
+
+app.post("/api/auth/unlink-identity", async (req, res) => {
+  try {
+    const { identity, session } = req.body || {};
+    const { client, refreshedSession, clearSession } = await getClientForSession(session);
+    if (clearSession) {
+      return res.status(401).json({ error: { message: "Session expired" }, clearSession: true });
+    }
+    const { data, error } = await client.auth.unlinkIdentity(identity);
+    res.json({ data, error: error ? { message: error.message } : null, refreshedSession, clearSession });
+  } catch (err: any) {
+    console.error("Unlink identity API failed:", err);
+    res.status(500).json({ error: { message: err.message || "Unlink identity failed" } });
   }
 });
 
@@ -442,7 +482,7 @@ app.get("/api/admin/users", async (req, res) => {
     }
     res.json({ data, error: null });
   } catch (err: any) {
-    logger.error("Admin user list API failed: %o", err);
+    console.error("Admin user list API failed:", err);
     res.status(500).json({ error: { message: err.message || "Admin user list retrieval failed" } });
   }
 });
@@ -462,7 +502,7 @@ app.post("/api/admin/users/create", async (req, res) => {
     }
     res.json({ data, error: null });
   } catch (err: any) {
-    logger.error("Admin user create API failed: %o", err);
+    console.error("Admin user create API failed:", err);
     res.status(500).json({ error: { message: err.message || "Admin user creation failed" } });
   }
 });
@@ -484,7 +524,7 @@ app.post("/api/admin/users/update", async (req, res) => {
     }
     res.json({ data, error: null });
   } catch (err: any) {
-    logger.error("Admin user update API failed: %o", err);
+    console.error("Admin user update API failed:", err);
     res.status(500).json({ error: { message: err.message || "Admin user update failed" } });
   }
 });
@@ -502,7 +542,7 @@ app.post("/api/admin/users/delete", async (req, res) => {
     }
     res.json({ data, error: null });
   } catch (err: any) {
-    logger.error("Admin user delete API failed: %o", err);
+    console.error("Admin user delete API failed:", err);
     res.status(500).json({ error: { message: err.message || "Admin user deletion failed" } });
   }
 });
@@ -531,13 +571,13 @@ app.post("/api/db/query", async (req, res) => {
 
     // Check if result has expired JWT error, and try force-refreshing if we haven't already refreshed
     if (!refreshedSession && session?.refresh_token && (result.error?.message?.toLowerCase().includes("jwt") || result.error?.message?.toLowerCase().includes("expired") || result.error?.status === 401)) {
-      logger.info("Query returned JWT error. Attempting forced session refresh...");
+      console.log("Query returned JWT error. Attempting forced session refresh...");
       const { session: forcedSession, error } = await refreshSessionDeduplicated(
         session.access_token,
         session.refresh_token
       );
       if (!error && forcedSession) {
-        logger.info("Forced refresh succeeded! Retrying query with new session...");
+        console.log("Forced refresh succeeded! Retrying query with new session...");
         const retryClient = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
           global: {
             headers: {
@@ -559,7 +599,7 @@ app.post("/api/db/query", async (req, res) => {
           refreshedSession: forcedSession
         });
       } else if (isPermanentRefreshError(error)) {
-        logger.warn("Forced refresh returned permanent refresh error. Requesting session clearance.");
+        console.warn("Forced refresh returned permanent refresh error. Requesting session clearance.");
         return res.status(401).json({
           error: { message: "Session expired" },
           clearSession: true
@@ -582,7 +622,7 @@ app.post("/api/db/query", async (req, res) => {
       clearSession: isExpiredError ? true : undefined
     });
   } catch (err: any) {
-    logger.error(`Database query failed on table "${req.body?.table}": %o`, err);
+    console.error(`Database query failed on table "${req.body?.table}":`, err);
     res.status(500).json({ error: { message: err.message || "Database query failed" } });
   }
 });
@@ -602,7 +642,7 @@ app.post("/api/storage/upload", async (req, res) => {
       });
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("Storage upload API failed: %o", err);
+    console.error("Storage upload API failed:", err);
     res.status(500).json({ error: { message: err.message || "File upload failed" } });
   }
 });
@@ -615,7 +655,7 @@ app.post("/api/storage/delete", async (req, res) => {
       .remove(paths);
     res.json({ data, error: error ? { message: error.message } : null });
   } catch (err: any) {
-    logger.error("Storage delete API failed: %o", err);
+    console.error("Storage delete API failed:", err);
     res.status(500).json({ error: { message: err.message || "File deletion failed" } });
   }
 });
@@ -684,7 +724,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
       </html>
     `);
   } catch (err: any) {
-    logger.error("Code exchange failed: %o", err);
+    console.error("Code exchange failed:", err);
     res.send(`
       <html>
         <body>

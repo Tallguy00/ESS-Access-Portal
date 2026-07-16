@@ -421,7 +421,13 @@ export default function App() {
           const mappedProfiles: UserProfile[] = data.map(item => {
             const emailLower = (item.email || '').toLowerCase().trim();
             const isManagerEmail = emailLower.startsWith('manager.');
-            const mappedRole = isManagerEmail ? 'Manager' : (item.role as any);
+            let mappedRole = isManagerEmail ? 'Manager' : (item.role as any);
+            
+            // Normalize role variations to match internal application RBAC states
+            if (mappedRole === 'IT Administrator') mappedRole = 'IT Admin';
+            if (mappedRole === 'Super Administrator') mappedRole = 'Super Admin';
+            if (mappedRole === 'Department Manager') mappedRole = 'Manager';
+
             const mappedDept = getDepartmentFromEmail(emailLower);
 
             // Fallback for custom profile fields stored inside notification_preferences JSONB
@@ -728,12 +734,25 @@ export default function App() {
         // Coerce manager email addresses to Manager role and correct department
         const emailLower = trimKey.toLowerCase();
         const isManagerEmail = emailLower.startsWith('manager.');
-        if (isManagerEmail && (foundProfile.role !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
+        
+        let targetRole = foundProfile.role;
+        if (targetRole === 'IT Administrator') targetRole = 'IT Admin';
+        if (targetRole === 'Super Administrator') targetRole = 'Super Admin';
+        if (targetRole === 'Department Manager') targetRole = 'Manager';
+
+        if (isManagerEmail && (targetRole !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
           const resolvedDept = getDepartmentFromEmail(emailLower);
           const upgradedProfile: UserProfile = {
             ...foundProfile,
             role: 'Manager',
             departmentId: resolvedDept
+          };
+          setCurrentUser(upgradedProfile);
+          setProfiles(prev => prev.map(p => p.email.toLowerCase().trim() === trimKey ? upgradedProfile : p));
+        } else if (foundProfile.role !== targetRole) {
+          const upgradedProfile: UserProfile = {
+            ...foundProfile,
+            role: targetRole as any
           };
           setCurrentUser(upgradedProfile);
           setProfiles(prev => prev.map(p => p.email.toLowerCase().trim() === trimKey ? upgradedProfile : p));
