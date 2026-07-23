@@ -484,8 +484,7 @@ export default function App() {
           console.log("OAuth PKCE code detected in URL. Exchanging code for session...");
           try {
             await supabase.auth.exchangeCodeForSession(code);
-            const newUrl = window.location.pathname + window.location.hash;
-            window.history.replaceState(null, "", newUrl || "/");
+            window.history.replaceState({}, document.title, window.location.pathname);
           } catch (codeErr) {
             console.warn("Error exchanging OAuth code for session:", codeErr);
           }
@@ -504,8 +503,7 @@ export default function App() {
                 access_token: accessToken,
                 refresh_token: refreshToken || undefined
               });
-              const newUrl = window.location.pathname + window.location.search;
-              window.history.replaceState(null, "", newUrl || "/");
+              window.history.replaceState({}, document.title, window.location.pathname);
             } catch (hashErr) {
               console.warn("Error setting session from hash tokens:", hashErr);
             }
