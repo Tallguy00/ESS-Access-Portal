@@ -326,349 +326,238 @@ export default function App() {
     });
   }, [requests, profiles]);
 
+  // Shared process user session function to handle active Supabase user session
+  const processUserSession = useCallback(async (session: any) => {
+    const loginKey = session?.user?.email;
+    if (!loginKey) {
+      sessionStorage.removeItem('ar_cached_user_profile');
+      localStorage.removeItem('ar_session_user_email');
+      setSessionUserEmail(null);
+      setCurrentUser(null);
+      setCurrentPage(prev => (
+        prev === 'public-request' || 
+        prev === 'public-track' || 
+        prev === 'login' || 
+        prev === 'register' || 
+        prev === 'forgot' || 
+        prev === 'reset' 
+          ? prev 
+          : 'landing'
+      ));
+      return null;
+    }
+
+    const trimKey = loginKey.toLowerCase().trim();
+
+    // 1. Check session storage cache
+    let foundProfile: UserProfile | null = null;
+    const cachedProfileStr = sessionStorage.getItem('ar_cached_user_profile');
+    if (cachedProfileStr) {
+      try {
+        const parsed = JSON.parse(cachedProfileStr);
+        if (parsed && parsed.email?.toLowerCase().trim() === trimKey) {
+          foundProfile = parsed;
+        }
+      } catch (e) {
+        console.warn("Could not parse cached user profile:", e);
+      }
+    }
+
+    // 2. Fetch from Supabase DB if not cached
+    if (!foundProfile) {
+      console.log("Fetching profile from DB for session recovery:", trimKey);
+      const { data: dbProfile, error: dbError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, department_id, status, created_at, mfa_enabled, phone_number, job_title, employee_id, avatar_url, last_login, notification_preferences')
+        .eq('email', trimKey)
+        .maybeSingle();
+
+      if (dbError) {
+        console.error("Error fetching single user profile:", dbError);
+      }
+
+      if (dbProfile) {
+        const customProfile = (dbProfile.notification_preferences as any)?.custom_profile || {};
+        let empId = dbProfile.employee_id !== undefined && dbProfile.employee_id !== null ? dbProfile.employee_id : customProfile.employeeId;
+        
+        if (!empId || !isValidESSID(empId)) {
+          empId = generateDeterministicESSID(dbProfile.email || '', dbProfile.id);
+          supabase
+            .from('profiles')
+            .update({ employee_id: empId })
+            .eq('id', dbProfile.id)
+            .then(({ error }) => {
+              if (error) console.warn("Failed to auto-migrate employee_id in database:", error.message);
+            });
+        }
+
+        const emailLower = trimKey.toLowerCase();
+        const isManagerEmail = emailLower.startsWith('manager.');
+        const mappedRole = isManagerEmail ? 'Manager' : (dbProfile.role as any);
+        const mappedDept = getDepartmentFromEmail(emailLower);
+
+        foundProfile = {
+          id: dbProfile.id,
+          fullName: dbProfile.full_name,
+          email: dbProfile.email,
+          role: mappedRole,
+          departmentId: mappedDept,
+          status: dbProfile.status as any,
+          createdAt: dbProfile.created_at,
+          mfaEnabled: dbProfile.mfa_enabled,
+          notificationPreferences: dbProfile.notification_preferences,
+          phoneNumber: dbProfile.phone_number !== undefined && dbProfile.phone_number !== null ? dbProfile.phone_number : customProfile.phoneNumber,
+          jobTitle: dbProfile.job_title !== undefined && dbProfile.job_title !== null ? dbProfile.job_title : customProfile.jobTitle,
+          employeeId: empId,
+          avatarUrl: dbProfile.avatar_url !== undefined && dbProfile.avatar_url !== null ? dbProfile.avatar_url : customProfile.avatarUrl,
+          lastLogin: dbProfile.last_login !== undefined && dbProfile.last_login !== null ? dbProfile.last_login : customProfile.lastLogin
+        };
+      }
+    }
+
+    // 3. Fallback on-the-fly profile if user profile not found in database (e.g. new OAuth signup)
+    if (!foundProfile) {
+      const emailLower = trimKey.toLowerCase();
+      const isManagerEmail = emailLower.startsWith('manager.');
+      const resolvedRole = isManagerEmail ? 'Manager' : 'User';
+      const resolvedDept = getDepartmentFromEmail(emailLower);
+      const onTheFlyId = 'user-' + Math.random().toString(36).substr(2, 9);
+      foundProfile = {
+        id: onTheFlyId,
+        fullName: trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        email: trimKey,
+        role: resolvedRole,
+        departmentId: resolvedDept,
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        employeeId: generateDeterministicESSID(trimKey, onTheFlyId)
+      };
+    }
+
+    // Handle deactivated accounts
+    if (foundProfile.status === 'Deactivated') {
+      alert('This corporate account has been deactivated by IT administration.');
+      sessionStorage.removeItem('ar_cached_user_profile');
+      localStorage.removeItem('ar_session_user_email');
+      setSessionUserEmail(null);
+      setCurrentUser(null);
+      await supabase.auth.signOut();
+      setCurrentPage('landing');
+      return null;
+    }
+
+    // Ensure manager email role coercion
+    const emailLower = trimKey.toLowerCase();
+    const isManagerEmail = emailLower.startsWith('manager.');
+    if (isManagerEmail && (foundProfile.role !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
+      const resolvedDept = getDepartmentFromEmail(emailLower);
+      foundProfile = {
+        ...foundProfile,
+        role: 'Manager',
+        departmentId: resolvedDept
+      };
+    }
+
+    // Update session & storage
+    sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(foundProfile));
+    localStorage.setItem('ar_session_user_email', trimKey);
+    setSessionUserEmail(trimKey);
+    setCurrentUser(foundProfile);
+    setProfiles(prev => {
+      const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
+      return [foundProfile!, ...filtered];
+    });
+    setCurrentPage('dashboard');
+    return foundProfile;
+  }, []);
+
   // Initial session recovery via Supabase Auth & Live Listener
   useEffect(() => {
-    const recoverSession = async () => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
       try {
-        // Detect OAuth callback responses from Supabase
+        // 1. Handle OAuth PKCE code parameter (?code=...)
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        if (code) {
+          console.log("OAuth PKCE code detected in URL. Exchanging code for session...");
+          try {
+            await supabase.auth.exchangeCodeForSession(code);
+            const newUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState(null, "", newUrl || "/");
+          } catch (codeErr) {
+            console.warn("Error exchanging OAuth code for session:", codeErr);
+          }
+        }
+
+        // 2. Handle OAuth implicit grant hash fragment (#access_token=...)
         const hash = window.location.hash;
         if (hash && (hash.includes("access_token=") || hash.includes("refresh_token="))) {
           const params = new URLSearchParams(hash.replace(/^#/, ''));
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           if (accessToken) {
-            console.log("OAuth callback detected. Creating session...");
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || undefined
-            });
-            // Clean up the URL hash so the user doesn't see raw tokens
+            console.log("OAuth hash tokens detected. Setting session...");
             try {
-              window.history.replaceState(null, "", window.location.pathname + window.location.search);
-            } catch (historyErr) {
-              console.warn("Could not clean up URL hash:", historyErr);
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || undefined
+              });
+              const newUrl = window.location.pathname + window.location.search;
+              window.history.replaceState(null, "", newUrl || "/");
+            } catch (hashErr) {
+              console.warn("Error setting session from hash tokens:", hashErr);
             }
           }
         }
 
+        // 3. Get current session after URL token/code processing
         const { data: { session } } = await supabase.auth.getSession();
-        const loginKey = session?.user?.email;
-        if (loginKey) {
-          const trimKey = loginKey.toLowerCase().trim();
-          
-          // 1. Try to load cached user profile from session storage to reduce DB queries
-          const cachedProfileStr = sessionStorage.getItem('ar_cached_user_profile');
-          let foundProfile: UserProfile | null = null;
-          
-          if (cachedProfileStr) {
-            try {
-              const parsed = JSON.parse(cachedProfileStr);
-              if (parsed && parsed.email?.toLowerCase().trim() === trimKey) {
-                foundProfile = parsed;
-              }
-            } catch (e) {
-              console.warn("Could not parse cached user profile:", e);
-            }
-          }
-
-          // 2. Fetch from DB if not cached - optimize query by requesting required fields
-          if (!foundProfile) {
-            console.log("Fetching profile from DB for session recovery:", trimKey);
-            const { data: dbProfile, error: dbError } = await supabase
-              .from('profiles')
-              .select('id, full_name, email, role, department_id, status, created_at, mfa_enabled, phone_number, job_title, employee_id, avatar_url, last_login, notification_preferences')
-              .eq('email', trimKey)
-              .maybeSingle();
-
-            if (dbError) {
-              console.error("Error fetching single user profile:", dbError);
-            }
-
-            if (dbProfile) {
-              const customProfile = (dbProfile.notification_preferences as any)?.custom_profile || {};
-              let empId = dbProfile.employee_id !== undefined && dbProfile.employee_id !== null ? dbProfile.employee_id : customProfile.employeeId;
-              
-              if (!empId || !isValidESSID(empId)) {
-                empId = generateDeterministicESSID(dbProfile.email || '', dbProfile.id);
-                supabase
-                  .from('profiles')
-                  .update({ employee_id: empId })
-                  .eq('id', dbProfile.id)
-                  .then(({ error }) => {
-                    if (error) console.warn("Failed to auto-migrate employee_id in database:", error.message);
-                  });
-              }
-
-              const emailLower = trimKey.toLowerCase();
-              const isManagerEmail = emailLower.startsWith('manager.');
-              const mappedRole = isManagerEmail ? 'Manager' : (dbProfile.role as any);
-              const mappedDept = getDepartmentFromEmail(emailLower);
-
-              foundProfile = {
-                id: dbProfile.id,
-                fullName: dbProfile.full_name,
-                email: dbProfile.email,
-                role: mappedRole,
-                departmentId: mappedDept,
-                status: dbProfile.status as any,
-                createdAt: dbProfile.created_at,
-                mfaEnabled: dbProfile.mfa_enabled,
-                notificationPreferences: dbProfile.notification_preferences,
-                phoneNumber: dbProfile.phone_number !== undefined && dbProfile.phone_number !== null ? dbProfile.phone_number : customProfile.phoneNumber,
-                jobTitle: dbProfile.job_title !== undefined && dbProfile.job_title !== null ? dbProfile.job_title : customProfile.jobTitle,
-                employeeId: empId,
-                avatarUrl: dbProfile.avatar_url !== undefined && dbProfile.avatar_url !== null ? dbProfile.avatar_url : customProfile.avatarUrl,
-                lastLogin: dbProfile.last_login !== undefined && dbProfile.last_login !== null ? dbProfile.last_login : customProfile.lastLogin
-              };
-            }
-          }
-
-          if (foundProfile) {
-            if (foundProfile.status === 'Deactivated') {
-              alert('This corporate account has been deactivated by IT administration.');
-              sessionStorage.removeItem('ar_cached_user_profile');
-              localStorage.removeItem('ar_session_user_email');
-              setSessionUserEmail(null);
-              setCurrentUser(null);
-              await supabase.auth.signOut();
-              setCurrentPage('landing');
-              setIsAuthInitializing(false);
-              return;
-            }
-
-            const emailLower = trimKey.toLowerCase();
-            const isManagerEmail = emailLower.startsWith('manager.');
-            if (isManagerEmail && (foundProfile.role !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
-              const resolvedDept = getDepartmentFromEmail(emailLower);
-              foundProfile = {
-                ...foundProfile,
-                role: 'Manager',
-                departmentId: resolvedDept
-              };
-            }
-
-            sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(foundProfile));
-            localStorage.setItem('ar_session_user_email', trimKey);
-            setSessionUserEmail(trimKey);
-            setCurrentUser(foundProfile);
-            setProfiles(prev => {
-              const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
-              return [foundProfile!, ...filtered];
-            });
-            setCurrentPage('dashboard');
-          } else {
-            // Create fallback on-the-fly profile
-            const emailLower = trimKey.toLowerCase();
-            const isManagerEmail = emailLower.startsWith('manager.');
-            const resolvedRole = isManagerEmail ? 'Manager' : 'User';
-            const resolvedDept = getDepartmentFromEmail(emailLower);
-            const onTheFlyId = 'user-' + Math.random().toString(36).substr(2, 9);
-            const newProfile: UserProfile = {
-              id: onTheFlyId,
-              fullName: trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-              email: trimKey,
-              role: resolvedRole,
-              departmentId: resolvedDept,
-              status: 'Active',
-              createdAt: new Date().toISOString(),
-              employeeId: generateDeterministicESSID(trimKey, onTheFlyId)
-            };
-
-            sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(newProfile));
-            localStorage.setItem('ar_session_user_email', trimKey);
-            setSessionUserEmail(trimKey);
-            setCurrentUser(newProfile);
-            setProfiles(prev => {
-              const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
-              return [newProfile, ...filtered];
-            });
-            setCurrentPage('dashboard');
-          }
-        } else {
-          sessionStorage.removeItem('ar_cached_user_profile');
-          localStorage.removeItem('ar_session_user_email');
-          setSessionUserEmail(null);
-          setCurrentUser(null);
-          setCurrentPage(prev => (
-            prev === 'landing' || 
-            prev === 'login' || 
-            prev === 'register' || 
-            prev === 'forgot' || 
-            prev === 'reset' || 
-            prev === 'public-request' || 
-            prev === 'public-track' 
-              ? prev 
-              : 'landing'
-          ));
+        
+        if (isMounted) {
+          await processUserSession(session);
         }
       } catch (err) {
         console.warn("Could not pre-recover active Supabase session:", err);
       } finally {
-        setIsAuthInitializing(false);
+        if (isMounted) {
+          setIsAuthInitializing(false);
+        }
       }
     };
-    recoverSession();
 
+    initializeAuth();
+
+    // 4. Register auth state change listener for subsequent auth changes
     let subscription: any = null;
     try {
-      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        const loginKey = session?.user?.email;
-        if (loginKey) {
-          const trimKey = loginKey.toLowerCase().trim();
-          
-          // Shield from duplicate fetches and redundant navigate calls
-          if (sessionUserEmail === trimKey && currentUser) {
-            return;
-          }
-
-          const cachedProfileStr = sessionStorage.getItem('ar_cached_user_profile');
-          let foundProfile: UserProfile | null = null;
-          
-          if (cachedProfileStr) {
-            try {
-              const parsed = JSON.parse(cachedProfileStr);
-              if (parsed && parsed.email?.toLowerCase().trim() === trimKey) {
-                foundProfile = parsed;
-              }
-            } catch (e) {}
-          }
-
-          if (!foundProfile) {
-            const { data: dbProfile } = await supabase
-              .from('profiles')
-              .select('id, full_name, email, role, department_id, status, created_at, mfa_enabled, phone_number, job_title, employee_id, avatar_url, last_login, notification_preferences')
-              .eq('email', trimKey)
-              .maybeSingle();
-
-            if (dbProfile) {
-              const customProfile = (dbProfile.notification_preferences as any)?.custom_profile || {};
-              let empId = dbProfile.employee_id !== undefined && dbProfile.employee_id !== null ? dbProfile.employee_id : customProfile.employeeId;
-              
-              if (!empId || !isValidESSID(empId)) {
-                empId = generateDeterministicESSID(dbProfile.email || '', dbProfile.id);
-                supabase
-                  .from('profiles')
-                  .update({ employee_id: empId })
-                  .eq('id', dbProfile.id)
-                  .then(({ error }) => {
-                    if (error) console.warn("Failed to auto-migrate employee_id in database:", error.message);
-                  });
-              }
-
-              const emailLower = trimKey.toLowerCase();
-              const isManagerEmail = emailLower.startsWith('manager.');
-              const mappedRole = isManagerEmail ? 'Manager' : (dbProfile.role as any);
-              const mappedDept = getDepartmentFromEmail(emailLower);
-
-              foundProfile = {
-                id: dbProfile.id,
-                fullName: dbProfile.full_name,
-                email: dbProfile.email,
-                role: mappedRole,
-                departmentId: mappedDept,
-                status: dbProfile.status as any,
-                createdAt: dbProfile.created_at,
-                mfaEnabled: dbProfile.mfa_enabled,
-                notificationPreferences: dbProfile.notification_preferences,
-                phoneNumber: dbProfile.phone_number !== undefined && dbProfile.phone_number !== null ? dbProfile.phone_number : customProfile.phoneNumber,
-                jobTitle: dbProfile.job_title !== undefined && dbProfile.job_title !== null ? dbProfile.job_title : customProfile.jobTitle,
-                employeeId: empId,
-                avatarUrl: dbProfile.avatar_url !== undefined && dbProfile.avatar_url !== null ? dbProfile.avatar_url : customProfile.avatarUrl,
-                lastLogin: dbProfile.last_login !== undefined && dbProfile.last_login !== null ? dbProfile.last_login : customProfile.lastLogin
-              };
-            }
-          }
-
-          if (foundProfile) {
-            if (foundProfile.status === 'Deactivated') {
-              alert('This corporate account has been deactivated by IT administration.');
-              sessionStorage.removeItem('ar_cached_user_profile');
-              localStorage.removeItem('ar_session_user_email');
-              setSessionUserEmail(null);
-              setCurrentUser(null);
-              await supabase.auth.signOut();
-              setCurrentPage('landing');
-              return;
-            }
-
-            const emailLower = trimKey.toLowerCase();
-            const isManagerEmail = emailLower.startsWith('manager.');
-            if (isManagerEmail && (foundProfile.role !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
-              const resolvedDept = getDepartmentFromEmail(emailLower);
-              foundProfile = {
-                ...foundProfile,
-                role: 'Manager',
-                departmentId: resolvedDept
-              };
-            }
-
-            sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(foundProfile));
-            localStorage.setItem('ar_session_user_email', trimKey);
-            setSessionUserEmail(trimKey);
-            setCurrentUser(foundProfile);
-            setProfiles(prev => {
-              const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
-              return [foundProfile!, ...filtered];
-            });
-            setCurrentPage('dashboard');
-          } else {
-            const emailLower = trimKey.toLowerCase();
-            const isManagerEmail = emailLower.startsWith('manager.');
-            const resolvedRole = isManagerEmail ? 'Manager' : 'User';
-            const resolvedDept = getDepartmentFromEmail(emailLower);
-            const onTheFlyId = 'user-' + Math.random().toString(36).substr(2, 9);
-            const newProfile: UserProfile = {
-              id: onTheFlyId,
-              fullName: trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-              email: trimKey,
-              role: resolvedRole,
-              departmentId: resolvedDept,
-              status: 'Active',
-              createdAt: new Date().toISOString(),
-              employeeId: generateDeterministicESSID(trimKey, onTheFlyId)
-            };
-
-            sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(newProfile));
-            localStorage.setItem('ar_session_user_email', trimKey);
-            setSessionUserEmail(trimKey);
-            setCurrentUser(newProfile);
-            setProfiles(prev => {
-              const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
-              return [newProfile, ...filtered];
-            });
-            setCurrentPage('dashboard');
-          }
-        } else {
-          sessionStorage.removeItem('ar_cached_user_profile');
-          localStorage.removeItem('ar_session_user_email');
-          setSessionUserEmail(null);
-          setCurrentUser(null);
-          setCurrentPage(prev => (
-            prev === 'landing' || 
-            prev === 'login' || 
-            prev === 'register' || 
-            prev === 'forgot' || 
-            prev === 'reset' || 
-            prev === 'public-request' || 
-            prev === 'public-track' 
-              ? prev 
-              : 'landing'
-          ));
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("Supabase onAuthStateChange event:", event);
+        if (!isMounted) return;
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await processUserSession(session);
+          setIsAuthInitializing(false);
+        } else if (event === 'SIGNED_OUT') {
+          await processUserSession(null);
+          setIsAuthInitializing(false);
         }
       });
       subscription = data?.subscription;
     } catch (err) {
-      console.warn("Could not register Supabase auth state change listener:", err);
+      console.warn("Could not register Supabase auth listener:", err);
     }
 
     return () => {
+      isMounted = false;
       try {
         subscription?.unsubscribe();
       } catch (err) {
-        console.warn("Could not unsubscribe from Supabase auth state channel:", err);
+        console.warn("Could not unsubscribe from Supabase auth channel:", err);
       }
     };
-  }, []);
+  }, [processUserSession]);
 
   // Load real profiles from Supabase DB on user sign-in/mount
   useEffect(() => {
