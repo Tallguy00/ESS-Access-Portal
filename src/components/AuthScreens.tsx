@@ -252,7 +252,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback'
+          redirectTo: window.location.origin
         }
       });
       setLoading(false);
@@ -275,7 +275,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin + '/auth/callback'
+          redirectTo: window.location.origin
         }
       });
       setLoading(false);
@@ -647,7 +647,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback'
+          redirectTo: window.location.origin
         }
       });
       setLoading(false);
@@ -669,7 +669,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin + '/auth/callback'
+          redirectTo: window.location.origin
         }
       });
       setLoading(false);
@@ -802,14 +802,14 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
                 <span className="absolute right-3 top-3.5 text-gray-400">
-                  <Phone className="w-4 h-4 hidden" />
+                  <Phone className="w-4 h-4" />
                 </span>
                 <input
                   id="register-phone"
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 019-2834"
+                  placeholder="+251 (955) 019-283"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-955 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -819,7 +819,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
                 <span className="absolute right-3 top-3.5 text-gray-400">
-                  <Briefcase className="w-4 h-4 hidden" />
+                  <Briefcase className="w-4 h-4" />
                 </span>
                 <input
                   id="register-job-title"
@@ -1009,7 +1009,7 @@ export function ForgotPasswordScreen({ onNavigate }: { onNavigate: (page: 'landi
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder="name@ess.gov.et"
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-sm text-gray-955 dark:text-white"
               />
             </div>

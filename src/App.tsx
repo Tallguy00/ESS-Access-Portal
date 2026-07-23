@@ -421,17 +421,39 @@ export default function App() {
       const isManagerEmail = emailLower.startsWith('manager.');
       const resolvedRole = isManagerEmail ? 'Manager' : 'User';
       const resolvedDept = getDepartmentFromEmail(emailLower);
-      const onTheFlyId = 'user-' + Math.random().toString(36).substr(2, 9);
+      const onTheFlyId = session?.user?.id || ('user-' + Math.random().toString(36).substr(2, 9));
+      const googleFullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const avatarUrl = session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || '';
+
       foundProfile = {
         id: onTheFlyId,
-        fullName: trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        fullName: googleFullName,
         email: trimKey,
         role: resolvedRole,
         departmentId: resolvedDept,
         status: 'Active',
         createdAt: new Date().toISOString(),
-        employeeId: generateDeterministicESSID(trimKey, onTheFlyId)
+        employeeId: generateDeterministicESSID(trimKey, onTheFlyId),
+        avatarUrl: avatarUrl
       };
+
+      // Asynchronously persist new OAuth user profile to Supabase database
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: onTheFlyId,
+            full_name: googleFullName,
+            email: trimKey,
+            role: resolvedRole,
+            department_id: resolvedDept,
+            status: 'Active',
+            employee_id: foundProfile.employeeId,
+            avatar_url: avatarUrl
+          });
+      } catch (dbUpsertErr) {
+        console.warn("Could not upsert fallback OAuth profile to Supabase:", dbUpsertErr);
+      }
     }
 
     // Handle deactivated accounts
@@ -534,9 +556,11 @@ export default function App() {
         console.log("Supabase onAuthStateChange event:", event);
         if (!isMounted) return;
         
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await processUserSession(session);
-          setIsAuthInitializing(false);
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          if (session) {
+            await processUserSession(session);
+            setIsAuthInitializing(false);
+          }
         } else if (event === 'SIGNED_OUT') {
           await processUserSession(null);
           setIsAuthInitializing(false);
