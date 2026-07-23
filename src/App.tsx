@@ -72,30 +72,11 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
 
   // Current Auth states
-  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(() => {
-    try {
-      const cached = sessionStorage.getItem('ar_cached_user_profile');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return parsed.email || localStorage.getItem('ar_session_user_email');
-      }
-    } catch (e) {}
     return localStorage.getItem('ar_session_user_email');
   });
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    try {
-      const cached = sessionStorage.getItem('ar_cached_user_profile');
-      return cached ? JSON.parse(cached) : null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<'landing' | 'login' | 'register' | 'forgot' | 'reset' | 'dashboard' | 'public-request' | 'public-track'>(() => {
-    try {
-      const cached = sessionStorage.getItem('ar_cached_user_profile');
-      if (cached) return 'dashboard';
-    } catch (e) {}
     return localStorage.getItem('ar_session_user_email') ? 'dashboard' : 'landing';
   });
   const [publicTrackId, setPublicTrackId] = useState('');
@@ -326,260 +307,95 @@ export default function App() {
     });
   }, [requests, profiles]);
 
-  // Shared process user session function to handle active Supabase user session
-  const processUserSession = useCallback(async (session: any) => {
-    const loginKey = session?.user?.email;
-    if (!loginKey) {
-      sessionStorage.removeItem('ar_cached_user_profile');
-      localStorage.removeItem('ar_session_user_email');
-      setSessionUserEmail(null);
-      setCurrentUser(null);
-      setCurrentPage(prev => (
-        prev === 'public-request' || 
-        prev === 'public-track' || 
-        prev === 'login' || 
-        prev === 'register' || 
-        prev === 'forgot' || 
-        prev === 'reset' 
-          ? prev 
-          : 'landing'
-      ));
-      return null;
-    }
-
-    const trimKey = loginKey.toLowerCase().trim();
-
-    // 1. Check session storage cache
-    let foundProfile: UserProfile | null = null;
-    const cachedProfileStr = sessionStorage.getItem('ar_cached_user_profile');
-    if (cachedProfileStr) {
-      try {
-        const parsed = JSON.parse(cachedProfileStr);
-        if (parsed && parsed.email?.toLowerCase().trim() === trimKey) {
-          foundProfile = parsed;
-        }
-      } catch (e) {
-        console.warn("Could not parse cached user profile:", e);
-      }
-    }
-
-    // 2. Fetch from Supabase DB if not cached
-    if (!foundProfile) {
-      console.log("Fetching profile from DB for session recovery:", trimKey);
-      const { data: dbProfile, error: dbError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, role, department_id, status, created_at, mfa_enabled, phone_number, job_title, employee_id, avatar_url, last_login, notification_preferences')
-        .eq('email', trimKey)
-        .maybeSingle();
-
-      if (dbError) {
-        console.error("Error fetching single user profile:", dbError);
-      }
-
-      if (dbProfile) {
-        const customProfile = (dbProfile.notification_preferences as any)?.custom_profile || {};
-        let empId = dbProfile.employee_id !== undefined && dbProfile.employee_id !== null ? dbProfile.employee_id : customProfile.employeeId;
-        
-        if (!empId || !isValidESSID(empId)) {
-          empId = generateDeterministicESSID(dbProfile.email || '', dbProfile.id);
-          supabase
-            .from('profiles')
-            .update({ employee_id: empId })
-            .eq('id', dbProfile.id)
-            .then(({ error }) => {
-              if (error) console.warn("Failed to auto-migrate employee_id in database:", error.message);
-            });
-        }
-
-        const emailLower = trimKey.toLowerCase();
-        const isManagerEmail = emailLower.startsWith('manager.');
-        const mappedRole = isManagerEmail ? 'Manager' : (dbProfile.role as any);
-        const mappedDept = getDepartmentFromEmail(emailLower);
-
-        foundProfile = {
-          id: dbProfile.id,
-          fullName: dbProfile.full_name,
-          email: dbProfile.email,
-          role: mappedRole,
-          departmentId: mappedDept,
-          status: dbProfile.status as any,
-          createdAt: dbProfile.created_at,
-          mfaEnabled: dbProfile.mfa_enabled,
-          notificationPreferences: dbProfile.notification_preferences,
-          phoneNumber: dbProfile.phone_number !== undefined && dbProfile.phone_number !== null ? dbProfile.phone_number : customProfile.phoneNumber,
-          jobTitle: dbProfile.job_title !== undefined && dbProfile.job_title !== null ? dbProfile.job_title : customProfile.jobTitle,
-          employeeId: empId,
-          avatarUrl: dbProfile.avatar_url !== undefined && dbProfile.avatar_url !== null ? dbProfile.avatar_url : customProfile.avatarUrl,
-          lastLogin: dbProfile.last_login !== undefined && dbProfile.last_login !== null ? dbProfile.last_login : customProfile.lastLogin
-        };
-      }
-    }
-
-    // 3. Fallback on-the-fly profile if user profile not found in database (e.g. new OAuth signup)
-    if (!foundProfile) {
-      const emailLower = trimKey.toLowerCase();
-      const isManagerEmail = emailLower.startsWith('manager.');
-      const resolvedRole = isManagerEmail ? 'Manager' : 'User';
-      const resolvedDept = getDepartmentFromEmail(emailLower);
-      const onTheFlyId = session?.user?.id || ('user-' + Math.random().toString(36).substr(2, 9));
-      const googleFullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      const avatarUrl = session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || '';
-
-      foundProfile = {
-        id: onTheFlyId,
-        fullName: googleFullName,
-        email: trimKey,
-        role: resolvedRole,
-        departmentId: resolvedDept,
-        status: 'Active',
-        createdAt: new Date().toISOString(),
-        employeeId: generateDeterministicESSID(trimKey, onTheFlyId),
-        avatarUrl: avatarUrl
-      };
-
-      // Asynchronously persist new OAuth user profile to Supabase database
-      try {
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: onTheFlyId,
-            full_name: googleFullName,
-            email: trimKey,
-            role: resolvedRole,
-            department_id: resolvedDept,
-            status: 'Active',
-            employee_id: foundProfile.employeeId,
-            avatar_url: avatarUrl
-          });
-      } catch (dbUpsertErr) {
-        console.warn("Could not upsert fallback OAuth profile to Supabase:", dbUpsertErr);
-      }
-    }
-
-    // Handle deactivated accounts
-    if (foundProfile.status === 'Deactivated') {
-      alert('This corporate account has been deactivated by IT administration.');
-      sessionStorage.removeItem('ar_cached_user_profile');
-      localStorage.removeItem('ar_session_user_email');
-      setSessionUserEmail(null);
-      setCurrentUser(null);
-      await supabase.auth.signOut();
-      setCurrentPage('landing');
-      return null;
-    }
-
-    // Ensure manager email role coercion
-    const emailLower = trimKey.toLowerCase();
-    const isManagerEmail = emailLower.startsWith('manager.');
-    if (isManagerEmail && (foundProfile.role !== 'Manager' || !foundProfile.departmentId.startsWith('dep-'))) {
-      const resolvedDept = getDepartmentFromEmail(emailLower);
-      foundProfile = {
-        ...foundProfile,
-        role: 'Manager',
-        departmentId: resolvedDept
-      };
-    }
-
-    // Update session & storage
-    sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(foundProfile));
-    localStorage.setItem('ar_session_user_email', trimKey);
-    setSessionUserEmail(trimKey);
-    setCurrentUser(foundProfile);
-    setProfiles(prev => {
-      const filtered = prev.filter(p => p.email.toLowerCase().trim() !== trimKey);
-      return [foundProfile!, ...filtered];
-    });
-    setCurrentPage('dashboard');
-    return foundProfile;
-  }, []);
-
   // Initial session recovery via Supabase Auth & Live Listener
   useEffect(() => {
-    let isMounted = true;
-
-    const initializeAuth = async () => {
+    const recoverSession = async () => {
       try {
-        // 1. Handle OAuth PKCE code parameter (?code=...)
-        const searchParams = new URLSearchParams(window.location.search);
-        const code = searchParams.get('code');
-        if (code) {
-          console.log("OAuth PKCE code detected in URL. Exchanging code for session...");
-          try {
-            await supabase.auth.exchangeCodeForSession(code);
-            window.history.replaceState({}, document.title, window.location.pathname);
-          } catch (codeErr) {
-            console.warn("Error exchanging OAuth code for session:", codeErr);
-          }
-        }
-
-        // 2. Handle OAuth implicit grant hash fragment (#access_token=...)
+        // Detect OAuth callback responses from Supabase
         const hash = window.location.hash;
         if (hash && (hash.includes("access_token=") || hash.includes("refresh_token="))) {
           const params = new URLSearchParams(hash.replace(/^#/, ''));
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           if (accessToken) {
-            console.log("OAuth hash tokens detected. Setting session...");
+            console.log("OAuth callback detected. Creating session...");
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || undefined
+            });
+            // Clean up the URL hash so the user doesn't see raw tokens
             try {
-              await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || undefined
-              });
-              window.history.replaceState({}, document.title, window.location.pathname);
-            } catch (hashErr) {
-              console.warn("Error setting session from hash tokens:", hashErr);
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            } catch (historyErr) {
+              console.warn("Could not clean up URL hash:", historyErr);
             }
           }
         }
 
-        // 3. Get current session after URL token/code processing
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (isMounted) {
-          await processUserSession(session);
+        const loginKey = session?.user?.email;
+        if (loginKey) {
+          setSessionUserEmail(loginKey);
+          localStorage.setItem('ar_session_user_email', loginKey);
+          setCurrentPage('dashboard');
+        } else {
+          setSessionUserEmail(null);
+          localStorage.removeItem('ar_session_user_email');
+          setCurrentPage(prev => (
+            prev === 'landing' || 
+            prev === 'login' || 
+            prev === 'register' || 
+            prev === 'forgot' || 
+            prev === 'reset' || 
+            prev === 'public-request' || 
+            prev === 'public-track' 
+              ? prev 
+              : 'landing'
+          ));
         }
       } catch (err) {
         console.warn("Could not pre-recover active Supabase session:", err);
-      } finally {
-        if (isMounted) {
-          setIsAuthInitializing(false);
-        }
       }
     };
+    recoverSession();
 
-    initializeAuth();
-
-    // 4. Register auth state change listener for subsequent auth changes
     let subscription: any = null;
     try {
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Supabase onAuthStateChange event:", event);
-        if (!isMounted) return;
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-          if (session) {
-            await processUserSession(session);
-            setIsAuthInitializing(false);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          await processUserSession(null);
-          setIsAuthInitializing(false);
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const loginKey = session?.user?.email;
+        if (loginKey) {
+          setSessionUserEmail(loginKey);
+          localStorage.setItem('ar_session_user_email', loginKey);
+          setCurrentPage('dashboard');
+        } else {
+          setSessionUserEmail(null);
+          localStorage.removeItem('ar_session_user_email');
+          setCurrentPage(prev => (
+            prev === 'landing' || 
+            prev === 'login' || 
+            prev === 'register' || 
+            prev === 'forgot' || 
+            prev === 'reset' || 
+            prev === 'public-request' || 
+            prev === 'public-track' 
+              ? prev 
+              : 'landing'
+          ));
         }
       });
       subscription = data?.subscription;
     } catch (err) {
-      console.warn("Could not register Supabase auth listener:", err);
+      console.warn("Could not register Supabase auth state change listener:", err);
     }
 
     return () => {
-      isMounted = false;
       try {
         subscription?.unsubscribe();
       } catch (err) {
-        console.warn("Could not unsubscribe from Supabase auth channel:", err);
+        console.warn("Could not unsubscribe from Supabase auth state channel:", err);
       }
     };
-  }, [processUserSession]);
+  }, []);
 
   // Load real profiles from Supabase DB on user sign-in/mount
   useEffect(() => {
@@ -893,9 +709,9 @@ export default function App() {
     };
   }, [fetchTicketsFromDB, currentUser]);
 
-  // Handle active session loading fallback
+  // Handle active session loading
   useEffect(() => {
-    if (sessionUserEmail && !currentUser) {
+    if (sessionUserEmail) {
       const trimKey = sessionUserEmail.toLowerCase().trim();
       const safeProfiles = Array.isArray(profiles) ? profiles.filter(Boolean) : [];
       const foundProfile = safeProfiles.find(p => 
@@ -945,10 +761,10 @@ export default function App() {
         setProfiles(prev => [...prev, newProfile]);
         setCurrentUser(newProfile);
       }
-    } else if (!sessionUserEmail) {
+    } else {
       setCurrentUser(null);
     }
-  }, [sessionUserEmail, profiles, currentUser]);
+  }, [sessionUserEmail, profiles]);
 
   // Auth Operations
   const handleLoginSuccess = async (email: string) => {
@@ -1002,7 +818,6 @@ export default function App() {
       
       setCurrentUser(updatedWithLogin);
       setProfiles(prev => prev.map(p => p.id === foundProfile.id ? updatedWithLogin : p));
-      sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(updatedWithLogin));
       
       try {
         await supabase
@@ -1012,26 +827,6 @@ export default function App() {
       } catch (err) {
         console.error("Failed to update last login in Supabase:", err);
       }
-    } else {
-      const emailLower = authenticatedEmail.toLowerCase().trim();
-      const isManagerEmail = emailLower.startsWith('manager.');
-      const resolvedRole = isManagerEmail ? 'Manager' : 'User';
-      const resolvedDept = getDepartmentFromEmail(emailLower);
-      const onTheFlyId = 'user-' + Math.random().toString(36).substr(2, 9);
-      const newProfile: UserProfile = {
-        id: onTheFlyId,
-        fullName: authenticatedEmail.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        email: authenticatedEmail,
-        role: resolvedRole,
-        departmentId: resolvedDept,
-        status: 'Active',
-        createdAt: new Date().toISOString(),
-        employeeId: generateDeterministicESSID(authenticatedEmail, onTheFlyId)
-      };
-      
-      setCurrentUser(newProfile);
-      setProfiles(prev => [...prev, newProfile]);
-      sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(newProfile));
     }
 
     // Create Audit entry for login
@@ -1198,7 +993,6 @@ export default function App() {
       console.warn("Failed to sign out from Supabase Auth service:", err);
     }
     localStorage.removeItem('ar_session_user_email');
-    sessionStorage.removeItem('ar_cached_user_profile');
     setSessionUserEmail(null);
     setCurrentUser(null);
     setCurrentPage('landing');
@@ -1230,7 +1024,6 @@ export default function App() {
     const updated = { ...currentUser, role: newRole, departmentId: newDeptId };
     setCurrentUser(updated);
     setProfiles(prev => prev.map(p => p.id === currentUser.id ? updated : p));
-    sessionStorage.setItem('ar_cached_user_profile', JSON.stringify(updated));
 
     // Persist this sandbox role & department alignment to the database profile so RLS policies take effect!
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(currentUser.id);
@@ -2335,38 +2128,6 @@ export default function App() {
         );
     }
   };
-
-  if (isAuthInitializing) {
-    return (
-      <div className={`${theme} min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden`}>
-        {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col items-center max-w-sm w-full text-center space-y-6 px-6 z-10">
-          <div className="relative">
-            {/* Outer spinning ring */}
-            <div className="w-16 h-16 rounded-full border-2 border-indigo-100 dark:border-indigo-950 animate-pulse flex items-center justify-center" />
-            <div className="absolute inset-0 w-16 h-16 rounded-full border-t-2 border-indigo-650 dark:border-indigo-400 animate-spin" />
-            
-            {/* Central icon */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <ShieldCheck className="w-7 h-7 text-indigo-650 dark:text-indigo-400 animate-pulse" />
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 tracking-tight">Ethiopian Statistics Service</h2>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 tracking-wider uppercase">Identity & Access Management</p>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 px-3 py-1.5 rounded-full shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            <span>Securing session gateway...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // If simple quest, show single screens nicely
   if (currentPage !== 'dashboard') {
