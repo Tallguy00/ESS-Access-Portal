@@ -250,7 +250,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setSuccessMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: callbackUrl
@@ -260,9 +260,6 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
-      } else {
-        const email = data?.user?.email || data?.session?.user?.email || 'alazarwendater@gmail.com';
-        onSuccess(email);
       }
     } catch (err: any) {
       setLoading(false);
@@ -277,7 +274,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setSuccessMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: callbackUrl
@@ -287,9 +284,6 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
-      } else {
-        const email = data?.user?.email || data?.session?.user?.email || 'apple.user@ess.gov.et';
-        onSuccess(email);
       }
     } catch (err: any) {
       setLoading(false);
@@ -653,7 +647,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       setErrorMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: callbackUrl
@@ -663,9 +657,6 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
-      } else {
-        const email = data?.user?.email || data?.session?.user?.email || 'alazarwendater@gmail.com';
-        onSuccess(email, { fullName: 'Google User', role: 'User', departmentId: 'dep-ict' });
       }
     } catch (err: any) {
       setLoading(false);
@@ -679,7 +670,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       setErrorMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: callbackUrl
@@ -689,9 +680,6 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
-      } else {
-        const email = data?.user?.email || data?.session?.user?.email || 'apple.user@ess.gov.et';
-        onSuccess(email, { fullName: 'Apple User', role: 'User', departmentId: 'dep-ict' });
       }
     } catch (err: any) {
       setLoading(false);
