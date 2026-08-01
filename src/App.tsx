@@ -499,14 +499,13 @@ export default function App() {
 
     const initializeAuth = async () => {
       try {
-        // 1. Handle OAuth PKCE code parameter (?code=...)
-        const searchParams = new URLSearchParams(window.location.search);
-        const code = searchParams.get('code');
-        if (code) {
-          console.log("OAuth PKCE code detected in URL. Exchanging code for session...");
+        // 1. Handle OAuth PKCE code parameter (?code=...) or /auth/callback path
+        const isAuthCallback = window.location.pathname.startsWith('/auth/callback') || window.location.search.includes('code=');
+        if (isAuthCallback || window.location.search.includes('code=')) {
+          console.log("OAuth callback detected in URL. Exchanging code for session...");
           try {
-            await supabase.auth.exchangeCodeForSession(code);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            await supabase.auth.exchangeCodeForSession(window.location.href);
+            window.history.replaceState({}, document.title, window.location.pathname === '/auth/callback' ? '/' : window.location.pathname);
           } catch (codeErr) {
             console.warn("Error exchanging OAuth code for session:", codeErr);
           }

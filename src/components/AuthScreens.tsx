@@ -249,10 +249,11 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setErrorMsg('');
       setSuccessMsg('');
       setLoading(true);
+      const callbackUrl = window.location.origin + '/auth/callback';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: callbackUrl
         }
       });
       setLoading(false);
@@ -272,10 +273,11 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setErrorMsg('');
       setSuccessMsg('');
       setLoading(true);
+      const callbackUrl = window.location.origin + '/auth/callback';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: callbackUrl
         }
       });
       setLoading(false);
@@ -644,10 +646,11 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
     try {
       setErrorMsg('');
       setLoading(true);
+      const callbackUrl = window.location.origin + '/auth/callback';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: callbackUrl
         }
       });
       setLoading(false);
@@ -666,10 +669,11 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
     try {
       setErrorMsg('');
       setLoading(true);
+      const callbackUrl = window.location.origin + '/auth/callback';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: callbackUrl
         }
       });
       setLoading(false);
@@ -809,7 +813,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+251 (955) 019-283"
+                  placeholder="+251 (955) 019-284"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-955 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -1003,7 +1007,7 @@ export function ForgotPasswordScreen({ onNavigate }: { onNavigate: (page: 'landi
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">Corporate Email Address</label>
             <div className="relative">
-              <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
+              <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <input
                 type="email"
                 required

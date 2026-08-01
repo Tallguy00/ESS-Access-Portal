@@ -391,24 +391,6 @@ app.post("/api/auth/verify-otp", async (req, res) => {
   }
 });
 
-app.post("/api/auth/oauth-url", async (req, res) => {
-  try {
-    const { provider, options } = req.body || {};
-    const { data, error } = await supabaseBackend.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: options?.redirectTo,
-        queryParams: options?.queryParams,
-        scopes: options?.scopes
-      }
-    });
-    res.json({ data, error: error ? { message: error.message } : null });
-  } catch (err: any) {
-    console.error("OAuth URL generation API failed:", err);
-    res.status(500).json({ error: { message: err.message || "OAuth URL generation failed" } });
-  }
-});
-
 app.post("/api/auth/logout", async (req, res) => {
   try {
     const { error } = await supabaseBackend.auth.signOut();

@@ -2,7 +2,9 @@
 // sending all operations securely to the Express backend (/api/...)
 // to achieve a robust full-stack architecture.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://kbqlhumzcfenjumhaznf.supabase.co";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (typeof window !== "undefined") {
@@ -14,6 +16,7 @@ if (typeof window !== "undefined") {
   }
 }
 
+const realSupabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const apiBaseUrl = import.meta.env.VITE_API_URL || '';
 
@@ -230,24 +233,40 @@ export const supabase = {
     },
 
     async signInWithOAuth({ provider, options }) {
-      const currentOrigin = window.location.origin;
-      const callbackUrl = `${currentOrigin}/auth/callback`;
-      
-      const res = await apiCall("/api/auth/oauth-url", { 
-        provider, 
-        options: {
-          ...options,
-          redirectTo: callbackUrl
-        } 
-      });
-      if (res.error) {
-        return { data: null, error: res.error };
+      const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const callbackUrl = options?.redirectTo || `${currentOrigin}/auth/callback`;
+
+      if (realSupabase) {
+        const { data, error } = await realSupabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            ...options,
+            redirectTo: callbackUrl,
+          },
+        });
+        if (error) {
+          return { data: null, error };
+        }
+        return { data, error: null };
       }
-      if (res.data?.url) {
-        window.location.href = res.data.url;
-        return { data: { provider, url: res.data.url }, error: null };
+
+      return { data: null, error: { message: "Supabase client not initialized" } };
+    },
+
+    async exchangeCodeForSession(codeOrUrl) {
+      if (realSupabase) {
+        const { data, error } = await realSupabase.auth.exchangeCodeForSession(codeOrUrl);
+        if (error) {
+          return { data: null, error };
+        }
+        if (data?.session) {
+          activeSession = data.session;
+          localStorage.setItem("ar_active_session", JSON.stringify(activeSession));
+          notifyAuthListeners("SIGNED_IN", activeSession);
+        }
+        return { data, error: null };
       }
-      return { data: null, error: { message: "Could not generate authorization URL" } };
+      return { data: null, error: { message: "Supabase client not initialized" } };
     },
 
     async updateUser(attributes) {
