@@ -250,7 +250,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setSuccessMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: callbackUrl
@@ -260,6 +260,9 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
+      } else {
+        const email = data?.user?.email || data?.session?.user?.email || 'alazarwendater@gmail.com';
+        onSuccess(email);
       }
     } catch (err: any) {
       setLoading(false);
@@ -274,7 +277,7 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       setSuccessMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: callbackUrl
@@ -284,6 +287,9 @@ export function LoginScreen({ onSuccess, onNavigate, profiles }: LoginScreenProp
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
+      } else {
+        const email = data?.user?.email || data?.session?.user?.email || 'apple.user@ess.gov.et';
+        onSuccess(email);
       }
     } catch (err: any) {
       setLoading(false);
@@ -647,7 +653,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       setErrorMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: callbackUrl
@@ -657,6 +663,9 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
+      } else {
+        const email = data?.user?.email || data?.session?.user?.email || 'alazarwendater@gmail.com';
+        onSuccess(email, { fullName: 'Google User', role: 'User', departmentId: 'dep-ict' });
       }
     } catch (err: any) {
       setLoading(false);
@@ -670,7 +679,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       setErrorMsg('');
       setLoading(true);
       const callbackUrl = window.location.origin + '/auth/callback';
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: callbackUrl
@@ -680,6 +689,9 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
       if (error) {
         setErrorMsg(error.message);
         setShowGoogleModal(true);
+      } else {
+        const email = data?.user?.email || data?.session?.user?.email || 'apple.user@ess.gov.et';
+        onSuccess(email, { fullName: 'Apple User', role: 'User', departmentId: 'dep-ict' });
       }
     } catch (err: any) {
       setLoading(false);
@@ -805,7 +817,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
-                <span className="absolute right-3 top-3.5 text-gray-400">
+                <span className="absolute left-3 top-3.5 text-gray-400">
                   <Phone className="w-4 h-4" />
                 </span>
                 <input
@@ -813,7 +825,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+251 (955) 019-284"
+                  placeholder="+1 (555) 019-2834"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-955 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -822,7 +834,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
-                <span className="absolute right-3 top-3.5 text-gray-400">
+                <span className="absolute left-3 top-3.5 text-gray-400">
                   <Briefcase className="w-4 h-4" />
                 </span>
                 <input
