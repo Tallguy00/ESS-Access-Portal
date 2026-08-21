@@ -392,7 +392,22 @@ export default function App() {
 
         const emailLower = trimKey.toLowerCase();
         const isManagerEmail = emailLower.startsWith('manager.');
-        const mappedRole = isManagerEmail ? 'Manager' : (dbProfile.role as any);
+        const isSuperAdminEmail = emailLower === 'super@ess.gov.et';
+        const isITAdminEmail = emailLower === 'admin@ess.gov.et';
+        
+        let mappedRole: UserRole = 'User';
+        const rawRole = (dbProfile.role || '').toString().trim();
+        if (isManagerEmail || rawRole.toLowerCase() === 'manager' || rawRole.toLowerCase() === 'department manager') {
+          mappedRole = 'Manager';
+        } else if (isSuperAdminEmail || rawRole.toLowerCase() === 'super admin' || rawRole.toLowerCase() === 'superadmin') {
+          mappedRole = 'Super Admin';
+        } else if (isITAdminEmail || rawRole.toLowerCase() === 'it admin' || rawRole.toLowerCase() === 'itadmin' || rawRole.toLowerCase() === 'admin') {
+          mappedRole = 'IT Admin';
+        } else if (rawRole.toLowerCase() === 'it support' || rawRole.toLowerCase() === 'itsupport' || rawRole.toLowerCase() === 'support') {
+          mappedRole = 'IT Support';
+        } else {
+          mappedRole = 'User';
+        }
         const mappedDept = getDepartmentFromEmail(emailLower);
 
         foundProfile = {
@@ -418,7 +433,13 @@ export default function App() {
     if (!foundProfile) {
       const emailLower = trimKey.toLowerCase();
       const isManagerEmail = emailLower.startsWith('manager.');
-      const resolvedRole = isManagerEmail ? 'Manager' : 'User';
+      const isSuperAdminEmail = emailLower === 'super@ess.gov.et';
+      const isITAdminEmail = emailLower === 'admin@ess.gov.et';
+      let resolvedRole: UserRole = 'User';
+      if (isManagerEmail) resolvedRole = 'Manager';
+      else if (isSuperAdminEmail) resolvedRole = 'Super Admin';
+      else if (isITAdminEmail) resolvedRole = 'IT Admin';
+      
       const resolvedDept = getDepartmentFromEmail(emailLower);
       const onTheFlyId = session?.user?.id || ('user-' + Math.random().toString(36).substr(2, 9));
       const googleFullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -489,6 +510,7 @@ export default function App() {
       return [foundProfile!, ...filtered];
     });
     setCurrentPage('dashboard');
+    setActiveTab('dashboard');
     return foundProfile;
   }, []);
 
@@ -503,7 +525,10 @@ export default function App() {
         if (isAuthCallback || window.location.search.includes('code=')) {
           console.log("OAuth callback detected in URL. Exchanging code for session...");
           try {
-            await supabase.auth.exchangeCodeForSession(window.location.href);
+            const { data } = await supabase.auth.exchangeCodeForSession(window.location.href);
+            if (data?.session && isMounted) {
+              await processUserSession(data.session);
+            }
             window.history.replaceState({}, document.title, window.location.pathname === '/auth/callback' ? '/' : window.location.pathname);
           } catch (codeErr) {
             console.warn("Error exchanging OAuth code for session:", codeErr);
@@ -519,10 +544,13 @@ export default function App() {
           if (accessToken) {
             console.log("OAuth hash tokens detected. Setting session...");
             try {
-              await supabase.auth.setSession({
+              const { data } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || undefined
               });
+              if (data?.session && isMounted) {
+                await processUserSession(data.session);
+              }
               window.history.replaceState({}, document.title, window.location.pathname);
             } catch (hashErr) {
               console.warn("Error setting session from hash tokens:", hashErr);
@@ -533,7 +561,7 @@ export default function App() {
         // 3. Get current session after URL token/code processing
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (isMounted) {
+        if (isMounted && session) {
           await processUserSession(session);
         }
       } catch (err) {
