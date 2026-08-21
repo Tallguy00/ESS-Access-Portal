@@ -531,6 +531,70 @@ export const supabase = {
         this.chain.push({ method: "single", args: [] });
         return this;
       },
+      maybeSingle() {
+        this.chain.push({ method: "maybeSingle", args: [] });
+        return this;
+      },
+      limit(count) {
+        this.chain.push({ method: "limit", args: [count] });
+        return this;
+      },
+      range(from, to) {
+        this.chain.push({ method: "range", args: [from, to] });
+        return this;
+      },
+      in(column, values) {
+        this.chain.push({ method: "in", args: [column, values] });
+        return this;
+      },
+      is(column, value) {
+        this.chain.push({ method: "is", args: [column, value] });
+        return this;
+      },
+      gt(column, value) {
+        this.chain.push({ method: "gt", args: [column, value] });
+        return this;
+      },
+      gte(column, value) {
+        this.chain.push({ method: "gte", args: [column, value] });
+        return this;
+      },
+      lt(column, value) {
+        this.chain.push({ method: "lt", args: [column, value] });
+        return this;
+      },
+      lte(column, value) {
+        this.chain.push({ method: "lte", args: [column, value] });
+        return this;
+      },
+      like(column, pattern) {
+        this.chain.push({ method: "like", args: [column, pattern] });
+        return this;
+      },
+      ilike(column, pattern) {
+        this.chain.push({ method: "ilike", args: [column, pattern] });
+        return this;
+      },
+      contains(column, value) {
+        this.chain.push({ method: "contains", args: [column, value] });
+        return this;
+      },
+      containedBy(column, value) {
+        this.chain.push({ method: "containedBy", args: [column, value] });
+        return this;
+      },
+      match(query) {
+        this.chain.push({ method: "match", args: [query] });
+        return this;
+      },
+      filter(column, operator, value) {
+        this.chain.push({ method: "filter", args: [column, operator, value] });
+        return this;
+      },
+      not(column, operator, value) {
+        this.chain.push({ method: "not", args: [column, operator, value] });
+        return this;
+      },
       // thenable protocol to act exactly like a Promise
       async then(onfulfilled, onrejected) {
         try {

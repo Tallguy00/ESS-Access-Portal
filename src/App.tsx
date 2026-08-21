@@ -442,12 +442,12 @@ export default function App() {
       
       const resolvedDept = getDepartmentFromEmail(emailLower);
       const onTheFlyId = session?.user?.id || ('user-' + Math.random().toString(36).substr(2, 9));
-      const googleFullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const userFullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || trimKey.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       const avatarUrl = session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || '';
 
       foundProfile = {
         id: onTheFlyId,
-        fullName: googleFullName,
+        fullName: userFullName,
         email: trimKey,
         role: resolvedRole,
         departmentId: resolvedDept,
@@ -457,13 +457,13 @@ export default function App() {
         avatarUrl: avatarUrl
       };
 
-      // Asynchronously persist new OAuth user profile to Supabase database
+      // Asynchronously persist new user profile to Supabase database
       try {
         await supabase
           .from('profiles')
           .upsert({
             id: onTheFlyId,
-            full_name: googleFullName,
+            full_name: userFullName,
             email: trimKey,
             role: resolvedRole,
             department_id: resolvedDept,
@@ -472,7 +472,7 @@ export default function App() {
             avatar_url: avatarUrl
           });
       } catch (dbUpsertErr) {
-        console.warn("Could not upsert fallback OAuth profile to Supabase:", dbUpsertErr);
+        console.warn("Could not upsert fallback profile to Supabase:", dbUpsertErr);
       }
     }
 
