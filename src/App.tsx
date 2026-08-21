@@ -72,7 +72,6 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
 
   // Current Auth states
-  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(() => {
     try {
       const cached = sessionStorage.getItem('ar_cached_user_profile');
@@ -539,10 +538,6 @@ export default function App() {
         }
       } catch (err) {
         console.warn("Could not pre-recover active Supabase session:", err);
-      } finally {
-        if (isMounted) {
-          setIsAuthInitializing(false);
-        }
       }
     };
 
@@ -558,11 +553,9 @@ export default function App() {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
           if (session) {
             await processUserSession(session);
-            setIsAuthInitializing(false);
           }
         } else if (event === 'SIGNED_OUT') {
           await processUserSession(null);
-          setIsAuthInitializing(false);
         }
       });
       subscription = data?.subscription;
@@ -2334,38 +2327,6 @@ export default function App() {
         );
     }
   };
-
-  if (isAuthInitializing) {
-    return (
-      <div className={`${theme} min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden`}>
-        {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col items-center max-w-sm w-full text-center space-y-6 px-6 z-10">
-          <div className="relative">
-            {/* Outer spinning ring */}
-            <div className="w-16 h-16 rounded-full border-2 border-indigo-100 dark:border-indigo-950 animate-pulse flex items-center justify-center" />
-            <div className="absolute inset-0 w-16 h-16 rounded-full border-t-2 border-indigo-650 dark:border-indigo-400 animate-spin" />
-            
-            {/* Central icon */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <ShieldCheck className="w-7 h-7 text-indigo-650 dark:text-indigo-400 animate-pulse" />
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 tracking-tight">Ethiopian Statistics Service</h2>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 tracking-wider uppercase">Identity & Access Management</p>
-          </div>
-          
-          <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 px-3 py-1.5 rounded-full shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            <span>Securing session gateway...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // If simple quest, show single screens nicely
   if (currentPage !== 'dashboard') {

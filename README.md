@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in 'https://ess-access-portal.onrender.com'
+View your app in 'https://ess-access-portal.vercel.app'
 
 ## Run Locally
 
