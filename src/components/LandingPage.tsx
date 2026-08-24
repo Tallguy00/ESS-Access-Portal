@@ -646,7 +646,7 @@ export default function LandingPage({ onNavigate, theme, onToggleTheme }: Landin
                   <Phone className="w-4 h-4 text-[#0052cc] dark:text-blue-400 mt-0.5" />
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">{t('landingExtra.contactHotline', 'Emergency SLA Hotline')}</h4>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block">+1 (800) 555-0199 (Ext 4)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block">+251 (911) 123 456 (Ext 4)</span>
                   </div>
                 </div>
 

@@ -660,7 +660,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-400">
+                <span className="absolute right-3 top-3.5 text-gray-400 hiding">
                   <Phone className="w-4 h-4" />
                 </span>
                 <input
@@ -668,7 +668,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 019-2834"
+                  placeholder="+251 (911) 123 456"
                   className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-955 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -677,7 +677,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-400">
+                <span className="absolute left-3 top-3.5 text-gray-400 hiding">
                   <Briefcase className="w-4 h-4" />
                 </span>
                 <input
@@ -798,7 +798,7 @@ export function ForgotPasswordScreen({ onNavigate }: { onNavigate: (page: 'landi
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400">Corporate Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Mail className="absolute right-3 top-3 w-4 h-4 text-gray-400" />
               <input
                 type="email"
                 required

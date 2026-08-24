@@ -459,7 +459,7 @@ export default function SupportView({
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold">Phone Hotline (Optional)</p>
                     <p className="text-xs font-black text-gray-900 dark:text-white">
-                      +1 (555) 019-9999
+                      +251 (911) 123 456
                     </p>
                   </div>
                 </div>

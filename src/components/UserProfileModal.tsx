@@ -187,7 +187,7 @@ export default function UserProfileModal({
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+1 (555) 019-2834"
+                  placeholder="+251 (911) 123 456"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-750 rounded-xl text-gray-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                 />
               </div>
