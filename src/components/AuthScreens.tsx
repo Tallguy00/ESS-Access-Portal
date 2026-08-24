@@ -660,7 +660,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Phone Number (Optional)</label>
               <div className="relative">
-                <span className="absolute right-3 top-3.5 text-gray-400 hiding">
+                <span className="absolute right-3 top-3 text-gray-400 ">
                   <Phone className="w-4 h-4" />
                 </span>
                 <input
@@ -677,7 +677,7 @@ export function RegisterScreen({ onSuccess, onNavigate, departments, profiles }:
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Job Title (Optional)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-400 hiding">
+                <span className="absolute right-3 top-3 text-gray-400 ">
                   <Briefcase className="w-4 h-4" />
                 </span>
                 <input
