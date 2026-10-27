@@ -4,7 +4,7 @@ This directory contains the database migration schema to connect your corporate 
 
 ## Structure
 
-- `migrations/20260623000000_init_schema.sql`: Contains the complete, enterprise-ready database schema including:
+- `migrations/maindb.sql`: Contains the complete, enterprise-ready database schema including:
   - **Departments**: Seeds default business units (Engineering, Finance, HR, Operations, Marketing).
   - **System Applications**: Seeds central system assets (AWS, PostgreSQL, Sharepoint, VPN, Slack, SAP).
   - **Profiles**: Central employee roster linked dynamically to `auth.users` via foreign keys and PostgreSQL database triggers.
